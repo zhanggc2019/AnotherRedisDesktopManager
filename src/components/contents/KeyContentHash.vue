@@ -6,14 +6,21 @@
       <el-button type="primary" @click="showEditDialog({})">{{ $t('message.add_new_line') }}</el-button>
 
       <!-- edit & add dialog -->
-      <el-dialog :title="dialogTitle" :visible.sync="editDialog" @open="openDialog" :close-on-click-modal="false">
+      <el-dialog
+        :title="dialogTitle"
+        v-model="editDialog"
+        :close-on-click-modal="false"
+        @open="openDialog">
         <el-form label-position="top">
 
           <!-- if ttl support -->
           <el-form-item v-if="ttlSupport" label="Field">
             <el-row :gutter="10">
               <el-col :span="18">
-                <InputBinary :content.sync="editLineItem.key" placeholder="Field"></InputBinary>
+                <InputBinary
+                  :content="editLineItem.key"
+                  placeholder="Field"
+                  @update:content="editLineItem.key = $event"></InputBinary>
               </el-col>
               <el-col :span="6">
                 <el-input v-model="editLineItem.ttl" placeholder="TTL (-1)" type="number"></el-input>
@@ -23,7 +30,10 @@
 
           <!-- common field -->
           <el-form-item v-else label="Field">
-            <InputBinary :content.sync="editLineItem.key" placeholder="Field"></InputBinary>
+            <InputBinary
+              :content="editLineItem.key"
+              placeholder="Field"
+              @update:content="editLineItem.key = $event"></InputBinary>
           </el-form-item>
 
           <el-form-item label="Value">
@@ -31,10 +41,12 @@
           </el-form-item>
         </el-form>
 
-        <div slot="footer" class="dialog-footer">
-          <el-button @click="editDialog = false">{{ $t('el.messagebox.cancel') }}</el-button>
-          <el-button type="primary" @click="editLine">{{ $t('el.messagebox.confirm') }}</el-button>
-        </div>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button @click="editDialog = false">{{ $t('el.messagebox.cancel') }}</el-button>
+            <el-button type="primary" @click="editLine">{{ $t('el.messagebox.confirm') }}</el-button>
+          </div>
+        </template>
       </el-dialog>
     </div>
 
@@ -51,29 +63,29 @@
         :data="hashData">
         <vxe-column type="seq" :title="'ID (Total: ' + total + ')'" width="150"></vxe-column>
         <vxe-column field="key" title="Key" sortable>
-          <template v-slot="scope">
+          <template #default="scope">
             {{ $util.bufToString(scope.row.key) }}
           </template>
         </vxe-column>
         <vxe-column field="value" title="Value" sortable>
-          <template v-slot="scope">
+          <template #default="scope">
             {{ $util.cutString($util.bufToString(scope.row.value), 100) }}
           </template>
         </vxe-column>
         <vxe-column v-if="ttlSupport" field="ttl" title="TTL" width="100" sortable></vxe-column>
         <vxe-column title="Operate" width="166">
-          <template slot-scope="scope" slot="header">
+          <template #header>
             <el-input size="mini"
               :placeholder="$t('message.key_to_search')"
-              :suffix-icon="loadingIcon"
-              @keyup.native.enter='initShow()'
+              :suffix-icon="resolveElIcon(loadingIcon)"
+              @keyup.enter='initShow()'
               v-model="filterValue">
             </el-input>
           </template>
-          <template slot-scope="scope">
-            <el-button type="text" @click="$util.copyToClipboard(scope.row.value)" icon="el-icon-document" :title="$t('message.copy')"></el-button>
-            <el-button type="text" @click="showEditDialog(scope.row)" icon="el-icon-edit" :title="$t('message.edit_line')"></el-button>
-            <el-button type="text" @click="deleteLine(scope.row)" icon="el-icon-delete" :title="$t('el.upload.delete')"></el-button>
+          <template #default="scope">
+            <el-button type="text" @click="$util.copyToClipboard(scope.row.value)" :icon="resolveElIcon('el-icon-document')" :title="$t('message.copy')"></el-button>
+            <el-button type="text" @click="showEditDialog(scope.row)" :icon="resolveElIcon('el-icon-edit')" :title="$t('message.edit_line')"></el-button>
+            <el-button type="text" @click="deleteLine(scope.row)" :icon="resolveElIcon('el-icon-delete')" :title="$t('el.upload.delete')"></el-button>
             <el-button type="text" @click="dumpCommand(scope.row)" icon="fa fa-code" :title="$t('message.dump_to_clipboard')"></el-button>
           </template>
         </vxe-column>
@@ -99,6 +111,7 @@ import FormatViewer from '@/components/FormatViewer';
 import InputBinary from '@/components/InputBinary';
 import { VxeTable, VxeColumn } from 'vxe-table';
 import versionCompare from 'node-version-compare';
+import { resolveElIcon } from '@/element-plus-icons';
 
 export default {
   data() {
@@ -140,9 +153,10 @@ export default {
           this.$refs.contentTable && this.$refs.contentTable.scrollTo(0, 99999999);
         }, 0);
       }
-    }
+    },
   },
   methods: {
+    resolveElIcon,
     initShow(resetTable = true) {
       resetTable && this.resetTable();
       this.loadingIcon = 'el-icon-loading';
@@ -176,7 +190,7 @@ export default {
       }
 
       const keys = hashData.map(line => line.key);
-      this.client.call('HTTL', this.redisKey, 'FIELDS', keys.length, ...keys).then(reply => {
+      this.client.call('HTTL', this.redisKey, 'FIELDS', keys.length, ...keys).then((reply) => {
         reply.forEach((ttl, index) => {
           this.hashData[startIndex + index].ttl = parseInt(ttl);
         });
@@ -200,7 +214,7 @@ export default {
             // keyDisplay: this.$util.bufToString(reply[i]),
             value: reply[i + 1],
             // valueDisplay: this.$util.bufToString(reply[i + 1]),
-            ttl: -1
+            ttl: -1,
           });
         }
 
@@ -277,18 +291,18 @@ export default {
 
         // set ttl if supportted
         if (this.ttlSupport && afterTTL > 0) {
-          this.client.call('HEXPIRE', key, afterTTL, "FIELDS", 1, afterKey);
+          this.client.call('HEXPIRE', key, afterTTL, 'FIELDS', 1, afterKey);
         }
 
         // this.initShow(); // do not reinit, #786
         const newLine = Object.assign(
           {}, before,
-          { key: afterKey, value: afterValue, ttl: afterTTL > 0 ? afterTTL : -1}
+          { key: afterKey, value: afterValue, ttl: afterTTL > 0 ? afterTTL : -1 },
         );
 
         // edit line
         if (before.key) {
-          this.$set(this.hashData, this.hashData.indexOf(before), newLine);
+          this.hashData.splice(this.hashData.indexOf(before), 1, newLine);
         }
         // new line
         else {

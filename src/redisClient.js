@@ -1,7 +1,7 @@
 import Redis from 'ioredis';
 import { createTunnel } from 'tunnel-ssh';
 import vue from '@/main.js';
-import { remote } from 'electron';
+import electron from '@/electron';
 import { writeCMD } from '@/commands.js';
 
 const fs = require('fs');
@@ -360,13 +360,9 @@ export default {
     }
 
     try {
-      // mac app store version, read through bookmark
-      if (bookmark) {
-        const bookmarkClose = remote.app.startAccessingSecurityScopedResource(bookmark);
-      }
-
-      const content = fs.readFileSync(file);
-      (typeof bookmarkClose === 'function') && bookmarkClose();
+      const content = bookmark
+        ? electron.readFileSync(file, bookmark)
+        : fs.readFileSync(file);
 
       return content;
     } catch (e) {

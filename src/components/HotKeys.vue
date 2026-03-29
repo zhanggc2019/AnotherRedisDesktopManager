@@ -1,5 +1,9 @@
 <template>
-<el-dialog :title="$t('message.hotkey')" :visible.sync="visible" custom-class='hotkey-tips-dialog' append-to-body>
+<el-dialog
+  :title="$t('message.hotkey')"
+  v-model="visible"
+  custom-class='hotkey-tips-dialog'
+  append-to-body>
   <el-table :data='keys'>
     <el-table-column
       prop="key"

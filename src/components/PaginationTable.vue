@@ -15,9 +15,10 @@
       v-if="dataAfterFilter.length > pageSize"
       :total="dataAfterFilter.length"
       :page-size="pageSize"
-      :current-page.sync="pageIndex"
+      :current-page="pageIndex"
       layout="total, prev, pager, next"
       background
+      @current-change="pageIndex = $event"
       >
     </el-pagination>
   </div>

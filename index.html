@@ -9,8 +9,6 @@
   <body>
     <!-- this script must be placed here after body -->
     <script type="text/javascript">
-      const ipcRenderer = require('electron').ipcRenderer;
-
       function changeCSS(theme = 'light') {
         const themeHref = `static/theme/${theme}/index.css`;
         document.getElementById('theme-link').href = themeHref;
@@ -19,7 +17,7 @@
       }
 
       function globalChangeTheme(theme) {
-        ipcRenderer.invoke('changeTheme', theme).then(shouldUseDarkColors => {
+        window.electronAPI.invoke('changeTheme', theme).then(shouldUseDarkColors => {
           // delay to avoid stuck
           setTimeout(() => {
             changeCSS(shouldUseDarkColors ? 'dark' : 'light');
@@ -28,7 +26,7 @@
       }
 
       // triggered by OS theme changed
-      ipcRenderer.on('os-theme-updated', (event, arg) => {
+      window.electronAPI.on('os-theme-updated', (arg) => {
         // auto change only when theme set to 'system'
         if (arg.themeSource != 'system') {
           return;
@@ -55,7 +53,7 @@
         // setted light or dark
         else {
           changeCSS(theme);
-          ipcRenderer.invoke('changeTheme', theme);
+          window.electronAPI.invoke('changeTheme', theme);
         }
       })();
     </script>

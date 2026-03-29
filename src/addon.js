@@ -1,7 +1,7 @@
 import getopts from 'getopts';
-import { ipcRenderer } from 'electron';
 import bus from './bus';
 import storage from './storage';
+import electron from './electron';
 
 export default {
   setup() {
@@ -26,23 +26,20 @@ export default {
     let zoomFactor = storage.getSetting('zoomFactor');
     zoomFactor = zoomFactor || 1.0;
 
-    const { webFrame } = require('electron');
-    webFrame.setZoomFactor(zoomFactor);
+    electron.setZoomFactor(zoomFactor);
   },
   openHrefInBrowser() {
-    const { shell } = require('electron');
-
     document.addEventListener('click', (event) => {
       const ele = event.target;
 
       if (ele && (ele.nodeName.toLowerCase() === 'a') && ele.href.startsWith('http')) {
         event.preventDefault();
-        shell.openExternal(ele.href);
+        electron.openExternal(ele.href);
       }
     });
   },
   bindCliArgs() {
-    ipcRenderer.invoke('getMainArgs').then((result) => {
+    electron.invoke('getMainArgs').then((result) => {
       if (!result.argv) {
         return;
       }

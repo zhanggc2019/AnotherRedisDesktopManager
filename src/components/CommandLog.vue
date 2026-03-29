@@ -1,5 +1,11 @@
 <template>
-<el-dialog @open='openDialog' :title="$t('message.command_log')" :visible.sync="visible" custom-class='command-log-dialog' width="90%" append-to-body>
+<el-dialog
+  :title="$t('message.command_log')"
+  v-model="visible"
+  custom-class='command-log-dialog'
+  width="90%"
+  append-to-body
+  @open='openDialog'>
   <!-- key list -->
   <div class="command-log-list">
     <vxe-table
@@ -24,10 +30,12 @@
   <!-- show only write commands -->
   <el-checkbox v-model='showOnlyWrite'>Only Write</el-checkbox>
 
-  <div slot="footer" class="dialog-footer">
-    <el-button @click="logs=[]">{{ $t('el.colorpicker.clear') }}</el-button>
-    <el-button @click="visible=false">{{ $t('el.messagebox.cancel') }}</el-button>
-  </div>
+  <template #footer>
+    <div class="dialog-footer">
+      <el-button @click="logs=[]">{{ $t('el.colorpicker.clear') }}</el-button>
+      <el-button @click="visible=false">{{ $t('el.messagebox.cancel') }}</el-button>
+    </div>
+  </template>
 </el-dialog>
 </template>
 
@@ -45,7 +53,7 @@ export default {
       showOnlyWrite: false,
     };
   },
-  components: { VxeTable, VxeColumn, },
+  components: { VxeTable, VxeColumn },
   created() {
     this.$bus.$on('commandLog', (record) => {
       // hide ping
@@ -89,8 +97,8 @@ export default {
     },
     scrollToBottom() {
       setTimeout(() => {
-        this.$refs.commandLogList &&
-          this.$refs.commandLogList.scrollTo(0, 99999999);
+        this.$refs.commandLogList
+          && this.$refs.commandLogList.scrollTo(0, 99999999);
       }, 0);
     },
   },

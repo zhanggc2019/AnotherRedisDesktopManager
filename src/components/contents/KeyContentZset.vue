@@ -17,7 +17,11 @@
       </el-radio-group>
 
       <!-- edit & add dialog -->
-      <el-dialog :title="dialogTitle" :visible.sync="editDialog" @open="openDialog" :close-on-click-modal="false">
+      <el-dialog
+        :title="dialogTitle"
+        v-model="editDialog"
+        :close-on-click-modal="false"
+        @open="openDialog">
         <el-form>
           <el-form-item label="Score">
             <el-input v-model="editLineItem.score" autocomplete="off"></el-input>
@@ -27,10 +31,12 @@
           </el-form-item>
         </el-form>
 
-        <div slot="footer" class="dialog-footer">
-          <el-button @click="editDialog = false">{{ $t('el.messagebox.cancel') }}</el-button>
-          <el-button type="primary" @click="editLine">{{ $t('el.messagebox.confirm') }}</el-button>
-        </div>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button @click="editDialog = false">{{ $t('el.messagebox.cancel') }}</el-button>
+            <el-button type="primary" @click="editLine">{{ $t('el.messagebox.confirm') }}</el-button>
+          </div>
+        </template>
       </el-dialog>
     </div>
 
@@ -48,23 +54,23 @@
         <vxe-column type="seq" :title="'ID (Total: ' + total + ')'" width="150"></vxe-column>
         <vxe-column field="score" title="Score" sortable width="150"></vxe-column>
         <vxe-column field="member" title="Member" sortable>
-          <template v-slot="scope">
+          <template #default="scope">
             {{ $util.cutString($util.bufToString(scope.row.member), 100) }}
           </template>
         </vxe-column>
         <vxe-column title="Operate" width="166">
-          <template slot-scope="scope" slot="header">
+          <template #header>
             <el-input size="mini"
               :placeholder="$t('message.key_to_search')"
-              :suffix-icon="loadingIcon"
-              @keyup.native.enter='initShow()'
+              :suffix-icon="resolveElIcon(loadingIcon)"
+              @keyup.enter='initShow()'
               v-model="filterValue">
             </el-input>
           </template>
-          <template slot-scope="scope">
-            <el-button type="text" @click="$util.copyToClipboard(scope.row.member)" icon="el-icon-document" :title="$t('message.copy')"></el-button>
-            <el-button type="text" @click="showEditDialog(scope.row)" icon="el-icon-edit" :title="$t('message.edit_line')"></el-button>
-            <el-button type="text" @click="deleteLine(scope.row)" icon="el-icon-delete" :title="$t('el.upload.delete')"></el-button>
+          <template #default="scope">
+            <el-button type="text" @click="$util.copyToClipboard(scope.row.member)" :icon="resolveElIcon('el-icon-document')" :title="$t('message.copy')"></el-button>
+            <el-button type="text" @click="showEditDialog(scope.row)" :icon="resolveElIcon('el-icon-edit')" :title="$t('message.edit_line')"></el-button>
+            <el-button type="text" @click="deleteLine(scope.row)" :icon="resolveElIcon('el-icon-delete')" :title="$t('el.upload.delete')"></el-button>
             <el-button type="text" @click="dumpCommand(scope.row)" icon="fa fa-code" :title="$t('message.dump_to_clipboard')"></el-button>
           </template>
         </vxe-column>
@@ -88,6 +94,7 @@
 <script>
 import FormatViewer from '@/components/FormatViewer';
 import { VxeTable, VxeColumn } from 'vxe-table';
+import { resolveElIcon } from '@/element-plus-icons';
 
 export default {
   data() {
@@ -125,9 +132,10 @@ export default {
           this.$refs.contentTable && this.$refs.contentTable.scrollTo(0, 99999999);
         }, 0);
       }
-    }
+    },
   },
   methods: {
+    resolveElIcon,
     initShow(resetTable = true) {
       resetTable && this.resetTable();
       this.loadingIcon = 'el-icon-loading';
@@ -284,7 +292,7 @@ export default {
         const newLine = { score: afterScore, member: afterMember };
         // edit line
         if (before.member) {
-          this.$set(this.zsetData, this.zsetData.indexOf(before), newLine);
+          this.zsetData.splice(this.zsetData.indexOf(before), 1, newLine);
         }
         // new line
         else {

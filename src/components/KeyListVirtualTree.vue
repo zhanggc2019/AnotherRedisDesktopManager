@@ -1,9 +1,14 @@
 <template>
-  <div ref="treeWrapper" class='key-list-vtree'>
+  <div ref="treeWrapper" class='key-list-vtree' :class="{ 'show-checkbox': multiOperating }">
     <!-- multi operate -->
     <div class="batch-operate">
       <div class="fixed-col">
-        <el-checkbox v-model='checkAllSelect' @change='toggleCheckAll' class='select-cancel-all' :title='$t("message.toggle_check_all")'></el-checkbox>
+        <input
+          class="select-cancel-all"
+          type="checkbox"
+          :checked="checkAllSelect"
+          :title="$t('message.toggle_check_all')"
+          @change="toggleCheckAll($event.target.checked)">
       </div>
       <div class="flex-col">
         <el-row :gutter="6">
@@ -21,42 +26,55 @@
     </div>
 
     <!-- tree list -->
-    <VueEasyTree
-      ref="veTree"
-      node-key="key"
-      :show-checkbox='multiOperating'
-      :height="vtreeHeight"
-      :data="keyNodes"
-      :props="props"
-      :indent=10
-      :itemSize=22
-      iconClass="fa fa-chevron-right"
-      :expand-on-click-node='!multiOperating'
-      :check-on-click-node='multiOperating'
-      :emptyText="$t('el.tree.emptyText')"
-      @node-click="nodeClick"
-      @node-contextmenu="rightClick"
-      :default-expanded-keys="Array.from(expandedKeys)"
-      :default-checked-keys="[]"
-      :auto-expand-parent="false"
-      @node-expand="nodeExpand"
-      @node-collapse="nodeCollapse"
-      @check="nodeCheck"
-      @click-check="clickCheck"
-      @node-keydown="nodeKeyDown"
-      highlight-current
+    <RecycleScroller
+      class="key-list-tree-body"
+      :items="visibleNodes"
+      :item-size="22"
+      key-field="key"
+      :style="{ height: multiOperating ? vtreeHeightMutiple : vtreeHeightRaw }"
     >
-      <span class="key-list-custom-node" slot-scope="{node, data}" :title="node.label">
-        <i v-if="!node.isLeaf" :class="node.expanded?'fa fa-folder-open':'fa fa-folder'"></i>
-        <span>{{ node.label }}</span>
-        <span v-if="!node.isLeaf" class="key-list-count">({{ data.keyCount }})</span>
-      </span>
-    </VueEasyTree>
+      <template #default="{ item, index }">
+        <div
+          class="key-tree-row"
+          :class="{
+            'is-current': currentKey === item.key,
+            'is-folder': !item.isLeaf,
+            'is-leaf': item.isLeaf,
+          }"
+          :data-row-key="encodeKey(item.key)"
+          :title="item.label"
+          tabindex="0"
+          @click="handleRowClick(item, $event)"
+          @contextmenu.prevent="rightClick($event, item)"
+          @keydown="nodeKeyDown(item, $event)"
+        >
+          <span class="key-tree-indent" :style="{ width: `${item.depth * 10}px` }"></span>
+
+          <input
+            v-if="multiOperating"
+            class="key-tree-checkbox"
+            type="checkbox"
+            :checked="item.checked"
+            @click.stop="toggleNodeCheck(item, $event, $event.target.checked)">
+
+          <span
+            class="key-tree-expand"
+            :class="{ 'is-leaf': item.isLeaf, expanded: item.expanded }"
+            @click.stop="toggleExpand(item)">
+            <i v-if="!item.isLeaf" class="fa fa-chevron-right"></i>
+          </span>
+
+          <i v-if="!item.isLeaf" :class="item.expanded ? 'fa fa-folder-open' : 'fa fa-folder'"></i>
+          <span class="key-tree-label">{{ item.label }}</span>
+          <span v-if="!item.isLeaf" class="key-list-count">({{ item.data.keyCount }})</span>
+        </div>
+      </template>
+    </RecycleScroller>
 
     <!-- right context menu -->
     <div ref='rightMenu' class="key-list-right-menu">
       <!-- folder right menu -->
-      <ul v-if="!rightClickNode.isLeaf">
+      <ul v-if="rightClickNode && !rightClickNode.isLeaf">
         <li @click='clickItem("multiple_select")'>{{ $t('message.multiple_select') }}</li>
         <li @click='clickItem("memory_analysis")'>{{ $t('message.memory_analysis') }}</li>
         <li @click='clickItem("load_cur_folder")'>{{ $t('message.load_current_folder') }}</li>
@@ -75,49 +93,159 @@
 </template>
 
 <script type="text/javascript">
-import VueEasyTree from '@qii404/vue-easy-tree';
+import { RecycleScroller } from 'vue-virtual-scroller';
+import electron from '@/electron';
 
 export default {
   data() {
     return {
-      rightClickNode: {},
+      rightClickNode: null,
       multiOperating: false,
       checkAllSelect: false,
-      vtreeHeight: 0,
       vtreeHeightRaw: 'calc(100vh - 248px)',
       vtreeHeightMutiple: 'calc(100vh - 284px)',
       treeNodesOverflow: 20e4, // 200k
       keyNodes: [],
-      props: {
-        label: 'name',
-        children: 'children',
-      },
-      expandedKeys: new Set(),
-      checkedKeys: [],
+      expandedKeys: [],
+      checkedLeafKeys: [],
+      currentKey: '',
+      nodeMap: {},
+      leafKeys: [],
+      folderKeys: [],
       rightClickItem: '',
+      lastCheckedKey: '',
+      lastCheckedValue: false,
     };
   },
   props: ['client', 'config', 'keyList'],
-  components: { VueEasyTree },
+  components: { RecycleScroller },
   computed: {
     separator() {
       return this.config.separator === undefined ? ':' : this.config.separator;
     },
+    visibleNodes() {
+      const checkedSet = new Set(this.checkedLeafKeys);
+      const expandedSet = new Set(this.expandedKeys);
+      const stateMap = {};
+      const collectState = (nodes) => {
+        for (const node of nodes) {
+          if (!node.children || !node.children.length) {
+            stateMap[node.key] = {
+              checked: checkedSet.has(node.key),
+              indeterminate: false,
+              leafCount: 1,
+              checkedCount: checkedSet.has(node.key) ? 1 : 0,
+            };
+            continue;
+          }
+
+          collectState(node.children);
+          const childStates = node.children.map(child => stateMap[child.key]);
+          const leafCount = childStates.reduce((sum, child) => sum + child.leafCount, 0);
+          const checkedCount = childStates.reduce((sum, child) => sum + child.checkedCount, 0);
+
+          stateMap[node.key] = {
+            checked: leafCount > 0 && checkedCount === leafCount,
+            indeterminate: checkedCount > 0 && checkedCount < leafCount,
+            leafCount,
+            checkedCount,
+          };
+        }
+      };
+
+      collectState(this.keyNodes);
+
+      const visible = [];
+      const flatten = (nodes, depth = 0) => {
+        for (const node of nodes) {
+          const isLeaf = !node.children || !node.children.length;
+          const state = stateMap[node.key] || {
+            checked: false,
+            indeterminate: false,
+          };
+
+          visible.push({
+            key: node.key,
+            label: node.name,
+            data: node,
+            depth,
+            isLeaf,
+            expanded: !isLeaf && expandedSet.has(node.key),
+            checked: state.checked,
+            indeterminate: state.indeterminate,
+          });
+
+          if (!isLeaf && expandedSet.has(node.key)) {
+            flatten(node.children, depth + 1);
+          }
+        }
+      };
+
+      flatten(this.keyNodes);
+      return visible;
+    },
   },
   methods: {
-    rightClick(event, data, node) {
+    encodeKey(key) {
+      return encodeURIComponent(key);
+    },
+    buildNodeMeta(nodes) {
+      const nodeMap = {};
+      const leafKeys = [];
+      const folderKeys = [];
+
+      const walk = (items) => {
+        for (const item of items) {
+          nodeMap[item.key] = item;
+
+          if (item.children && item.children.length) {
+            folderKeys.push(item.key);
+            walk(item.children);
+          } else {
+            leafKeys.push(item.key);
+          }
+        }
+      };
+
+      walk(nodes);
+      this.nodeMap = nodeMap;
+      this.leafKeys = leafKeys;
+      this.folderKeys = folderKeys;
+    },
+    sortTreeNodes(nodes) {
+      this.$util.sortKeysAndFolder(nodes);
+      for (const node of nodes) {
+        if (node.children && node.children.length) {
+          this.sortTreeNodes(node.children);
+        }
+      }
+    },
+    collectLeafKeys(nodes = []) {
+      const keys = [];
+
+      const walk = (items) => {
+        for (const item of items) {
+          if (item.children && item.children.length) {
+            walk(item.children);
+          } else {
+            keys.push(item.key);
+          }
+        }
+      };
+
+      walk(nodes);
+      return keys;
+    },
+    rightClick(event, item) {
       this.hideAllMenus();
+      this.currentKey = item.key;
+      this.rightClickNode = item;
 
-      this.$refs.veTree.setCurrentKey(node.key);
-      this.rightClickNode = node;
-
-      // nextTick for dom render
       this.$nextTick(() => {
         let top = event.clientY;
         const menu = this.$refs.rightMenu;
         menu.style.display = 'block';
 
-        // position in bottom
         if (document.body.clientHeight - top < menu.clientHeight) {
           top -= menu.clientHeight;
         }
@@ -128,75 +256,119 @@ export default {
         document.addEventListener('click', this.hideAllMenus, { once: true });
       });
     },
-    nodeClick(data, node, component, event) {
+    handleRowClick(item, event) {
+      this.currentKey = item.key;
+
       if (this.multiOperating) {
+        this.toggleNodeCheck(item, event, !item.checked);
         return;
       }
 
-      // key clicked
-      if (!data.children) {
+      if (item.isLeaf) {
         let newTab = false;
         event && (event.ctrlKey || event.metaKey) && (newTab = true);
-
-        this.clickKey(Buffer.from(data.nameBuffer.data), newTab);
-      }
-      // folder click, do nothing
-    },
-    nodeExpand(data, node, component) {
-      this.expandedKeys.add(data.key);
-      // async sort nodes
-      if (!node.customSorted) {
-        node.customSorted = true;
-        this.$util.sortByTreeNodes(node.childNodes);
-      }
-    },
-    nodeCollapse(data, node, component) {
-      this.expandedKeys.delete(data.key);
-    },
-    nodeCheck(data, state) {
-      const node = this.$refs.veTree.getNode(data);
-      const event = (window.event.type === 'click') ? window.event : this.clickCheckEvent;
-
-      // handle shift to multi check
-      this.multipleCheck(node, event);
-    },
-    clickCheck(event) {
-      // add 'click' event when toggle checkbox, default only 'check' event
-      this.clickCheckEvent = event;
-    },
-    nodeKeyDown(node, event) {
-      if (!node) {
+        this.clickKey(Buffer.from(item.data.nameBuffer.data), newTab);
         return;
       }
 
-      const { data } = node;
-      this.$refs.veTree.setCurrentKey(node.key);
+      this.toggleExpand(item);
+    },
+    toggleExpand(item) {
+      if (item.isLeaf) {
+        return;
+      }
 
-      // up & down, key node
-      if (['ArrowUp', 'ArrowDown'].includes(event.key) && !data.children) {
-        this.clickKey(Buffer.from(data.nameBuffer.data));
+      const exists = this.expandedKeys.includes(item.key);
+      this.expandedKeys = exists
+        ? this.expandedKeys.filter(key => key !== item.key)
+        : this.expandedKeys.concat(item.key);
+    },
+    updateCheckedLeafKeys(keys, checked) {
+      const next = new Set(this.checkedLeafKeys);
+
+      for (const key of keys) {
+        checked ? next.add(key) : next.delete(key);
+      }
+
+      this.checkedLeafKeys = Array.from(next);
+      this.syncCheckAllSelect();
+    },
+    toggleNodeCheck(item, event = null, checked = !item.checked) {
+      const keys = item.isLeaf ? [item.key] : this.collectLeafKeys(item.data.children || []);
+      this.updateCheckedLeafKeys(keys, checked);
+
+      const previousChecked = this.lastCheckedValue;
+      const leafNodes = this.visibleNodes.filter(node => node.isLeaf);
+      const from = leafNodes.findIndex(node => node.key === this.lastCheckedKey);
+      const to = leafNodes.findIndex(node => node.key === item.key);
+
+      if (event && event.shiftKey && from >= 0 && to >= 0 && from !== to) {
+        const [start, end] = from < to ? [from, to] : [to, from];
+        const rangeKeys = leafNodes.slice(start, end + 1).map(node => node.key);
+        this.updateCheckedLeafKeys(rangeKeys, previousChecked);
+      }
+
+      this.lastCheckedKey = item.key;
+      this.lastCheckedValue = checked;
+    },
+    focusRow(key) {
+      this.$nextTick(() => {
+        const row = this.$el.querySelector(`[data-row-key="${this.encodeKey(key)}"]`);
+        row && row.focus();
+      });
+    },
+    nodeKeyDown(item, event) {
+      if (!item) {
+        return;
+      }
+
+      this.currentKey = item.key;
+
+      if (event.key === 'ArrowRight' && !item.isLeaf && !item.expanded) {
+        event.preventDefault();
+        this.toggleExpand(item);
+        return;
+      }
+
+      if (event.key === 'ArrowLeft' && !item.isLeaf && item.expanded) {
+        event.preventDefault();
+        this.toggleExpand(item);
+        return;
+      }
+
+      if (!['ArrowUp', 'ArrowDown'].includes(event.key)) {
+        return;
+      }
+
+      event.preventDefault();
+      const index = this.visibleNodes.findIndex(node => node.key === item.key);
+      const next = this.visibleNodes[index + (event.key === 'ArrowDown' ? 1 : -1)];
+
+      if (!next) {
+        return;
+      }
+
+      this.currentKey = next.key;
+      this.focusRow(next.key);
+
+      if (next.isLeaf) {
+        this.clickKey(Buffer.from(next.data.nameBuffer.data));
       }
     },
     showMultiSelect() {
       this.multiOperating = true;
-      this.$refs.treeWrapper.classList.add('show-checkbox');
-
-      // adjust vtree height
-      this.vtreeHeight = this.vtreeHeightMutiple;
     },
     hideMultiSelect() {
       this.multiOperating = false;
       this.checkAllSelect = false;
-      this.$refs.veTree.setCheckedAll(false);
-      this.$refs.treeWrapper.classList.remove('show-checkbox');
-
-      // recover vtree height
-      this.vtreeHeight = this.vtreeHeightRaw;
+      this.checkedLeafKeys = [];
+      this.lastCheckedKey = '';
+      this.lastCheckedValue = false;
     },
     hideAllMenus() {
       const menus = document.querySelectorAll('.key-list-right-menu');
 
-      if (menus.length === 0) {
+      if (!menus.length) {
         return;
       }
 
@@ -205,18 +377,18 @@ export default {
       }
     },
     clickItem(type) {
+      if (!this.rightClickNode) {
+        return;
+      }
+
       this.rightClickItem = type;
 
       switch (type) {
-        // copy key name
         case 'copy': {
-          const { clipboard } = require('electron');
-          clipboard.writeText(this.rightClickNode.data.name);
+          electron.writeText(this.rightClickNode.data.name);
           break;
         }
-        // del single key["delete" in the key right menu]
         case 'delete': {
-          // del batch instead of single when multi operating
           if (this.multiOperating) {
             return this.deleteBatch();
           }
@@ -237,23 +409,19 @@ export default {
           }).catch((e) => { this.$message.error(e.message); });
           break;
         }
-        // select multiple
         case 'multiple_select': {
           this.showMultiSelect();
           break;
         }
-        // open key in new tab
         case 'open': {
           this.clickKey(Buffer.from(this.rightClickNode.data.nameBuffer.data), true);
           break;
         }
-        // delete whole folder
         case 'delete_folder': {
           const rule = { pattern: [this.rightClickNode.data.fullName] };
           this.$bus.$emit('openDelBatch', this.client, this.config.connectionName, rule);
           break;
         }
-        // memory analysis
         case 'memory_analysis': {
           const pattern = this.rightClickNode.data.fullName;
           this.$bus.$emit('memoryAnalysis', this.client, this.config.connectionName, pattern);
@@ -261,10 +429,9 @@ export default {
         }
         case 'export': {
           if (!this.multiOperating) {
-            this.$refs.veTree.setChecked(this.rightClickNode.key, true);
+            this.updateCheckedLeafKeys([this.rightClickNode.key], true);
             this.showMultiSelect();
-          }
-          else {
+          } else {
             this.exportBatch();
           }
 
@@ -278,36 +445,35 @@ export default {
       }
     },
     toggleCheckAll(checked) {
-      return this.$refs.veTree.setCheckedAll(checked);
+      this.checkAllSelect = checked;
+      this.checkedLeafKeys = checked ? this.leafKeys.slice() : [];
+    },
+    syncCheckAllSelect() {
+      this.checkAllSelect = this.leafKeys.length > 0
+        && this.leafKeys.every(key => this.checkedLeafKeys.includes(key));
     },
     deleteBatch() {
       const rule = { key: [], pattern: [] };
-      const checkedNodes = this.$refs.veTree.getCheckedNodes();
 
-      for (const node of checkedNodes) {
-        // key node
-        if (!node.children) {
-          rule.key.push(Buffer.from(node.nameBuffer.data));
-        }
+      for (const key of this.checkedLeafKeys) {
+        const node = this.nodeMap[key];
+        node && rule.key.push(Buffer.from(node.nameBuffer.data));
       }
 
       this.hideMultiSelect();
       this.$bus.$emit('openDelBatch', this.client, this.config.connectionName, rule);
     },
     exportBatch() {
-      const checkedNodes = this.$refs.veTree.getCheckedNodes();
       const keys = [];
 
-      if (!checkedNodes.length) {
+      if (!this.checkedLeafKeys.length) {
         this.$message.warning('Please select keys!');
         return;
       }
 
-      for (const node of checkedNodes) {
-        // key node
-        if (!node.children) {
-          keys.push(Buffer.from(node.nameBuffer.data));
-        }
+      for (const key of this.checkedLeafKeys) {
+        const node = this.nodeMap[key];
+        node && keys.push(Buffer.from(node.nameBuffer.data));
       }
 
       this.hideMultiSelect();
@@ -316,86 +482,13 @@ export default {
     clickKey(key, newTab = false) {
       this.$bus.$emit('clickedKey', this.client, key, newTab);
     },
-    multipleCheck(node, event) {
-      if (!event.shiftKey || !this.lastKey || node.key === this.lastKey) {
-        this.lastKey = node.key;
-        this.lastY = event.screenY;
-        this.lastChecked = node.checked;
-        return;
-      }
-
-      const tree = this.$refs.veTree;
-      const curKey = node.key;
-      const direction = (event.screenY - this.lastY) <= 0 ? 'up' : 'down';
-
-      const topKey = direction == 'up' ? curKey : this.lastKey;
-      const bottomKey = direction == 'up' ? this.lastKey : curKey;
-
-      let bottomNode = tree.getNode(bottomKey);
-      const bottomNodeParents = new Set();
-
-      // get all bottom node parents
-      while (bottomNode.parent) {
-        bottomNode = bottomNode.parent;
-        bottomNodeParents.add(bottomNode.key);
-      }
-
-      let start = false;
-      const selectedNodes = [];
-
-      // collect all nodes which need to be checked, from bottom to top
-      for (let i = tree.dataList.length - 1; i >= 0; i--) {
-        const item = tree.dataList[i];
-
-        if (!start) {
-          if (item.key === bottomKey) {
-            direction === 'down' && selectedNodes.push(item);
-            start = true;
-          }
-
-          continue;
-        }
-
-        if (item.key === topKey) {
-          direction === 'up' && selectedNodes.push(item);
-          break;
-        }
-
-        selectedNodes.push(item);
-      }
-
-      const checkRecursive = (node, checked = true) => {
-        node.checked = checked;
-
-        // folder node
-        if (node.childNodes.length) {
-          for (const item of node.childNodes) {
-            checkRecursive(item, checked);
-          }
-        }
-      };
-
-      for (const item of selectedNodes) {
-        if (bottomNodeParents.has(item.key)) {
-          continue;
-        }
-
-        checkRecursive(item, this.lastChecked);
-      }
-
-      // reinit folder node check status
-      this.$refs.veTree.store._initCheckRecursive(tree.root);
-    },
   },
   watch: {
     keyList(newList) {
       let newListCopy = newList;
 
-      // size limit
       if (newList.length > this.treeNodesOverflow) {
-        // force cut
         newListCopy = newList.slice(0, this.treeNodesOverflow);
-        // using nextTick to relieve msg missing caused by app stuck
         this.$nextTick(() => {
           this.$message.warning({
             message: this.$t('message.tree_node_overflow', { num: this.treeNodesOverflow }),
@@ -404,30 +497,27 @@ export default {
         });
       }
 
-      // backup checked keys
-      this.checkedKeys = this.$refs.veTree.getCheckedKeys(true);
-
       const keyNodes = this.separator
-        ? this.$util.keysToTree(newListCopy, this.separator, this.expandedKeys, this.treeNodesOverflow)
+        ? this.$util.keysToTree(newListCopy, this.separator, new Set(this.expandedKeys), this.treeNodesOverflow)
         : this.$util.keysToList(newListCopy);
 
+      this.sortTreeNodes(keyNodes);
       this.keyNodes = keyNodes;
+      this.buildNodeMeta(keyNodes);
 
-      this.$nextTick(() => {
-        // sort outermost layer nodes
-        this.$util.sortByTreeNodes(this.$refs.veTree.root.childNodes);
-        // recheck checked nodes
-        this.$refs.veTree.setCheckedLeafKeys(this.checkedKeys);
+      this.expandedKeys = this.expandedKeys.filter(key => this.folderKeys.includes(key));
+      this.checkedLeafKeys = this.checkedLeafKeys.filter(key => this.leafKeys.includes(key));
 
-        // little keys such as extract search, expand all
-        if (newListCopy.length <= 20) {
-          this.$refs.veTree.setExpandAll(true);
-        }
-      });
+      if (newListCopy.length <= 20) {
+        this.expandedKeys = this.folderKeys.slice();
+      }
+
+      if (this.currentKey && !this.nodeMap[this.currentKey]) {
+        this.currentKey = '';
+      }
+
+      this.syncCheckAllSelect();
     },
-  },
-  created() {
-    this.vtreeHeight = this.vtreeHeightRaw;
   },
 };
 </script>
@@ -436,18 +526,15 @@ export default {
 .key-list-vtree {
   height: calc(100vh - 250px);
 }
-/*vtree container*/
-.key-list-vtree .vue-recycle-scroller {
+
+.key-list-vtree .key-list-tree-body {
   width: calc(100% + 2px);
 }
 
-/*replace transform to avoid font blurry*/
 .key-list-vtree .vue-recycle-scroller.ready .vue-recycle-scroller__item-view {
   will-change: auto;
 }
 
-/*vtree scrollbat style*/
-/*blur status*/
 .key-list-vtree .vue-recycle-scroller::-webkit-scrollbar-thumb {
   border: 3px dashed transparent;
   background-clip: padding-box;
@@ -456,7 +543,6 @@ export default {
   background: transparent;
 }
 
-/*focus status*/
 .key-list-vtree .vue-recycle-scroller::-webkit-scrollbar-thumb:hover {
   background: #7f7f7f;
 }
@@ -464,94 +550,89 @@ export default {
   background: #e0e0dd;
 }
 
-/*focus status darkmode*/
 .dark-mode .key-list-vtree .vue-recycle-scroller::-webkit-scrollbar-thumb:hover {
   background: #6a838f;
 }
 .dark-mode .key-list-vtree .vue-recycle-scroller::-webkit-scrollbar-track:hover {
   background: #495961;
 }
-/*vtree scrollbat style end*/
 
-
-/*node item*/
-.key-list-vtree .el-tree-node {
-  font-size: 14px;
-}
-.key-list-vtree .el-tree-node .el-tree-node__content {
-  padding-left: 3px;
-  padding-right: 3px;
-  margin-right: 1px;
-}
-/*node hover color*/
-.key-list-vtree .el-tree-node > .el-tree-node__content:hover {
-  background-color: #e7e7e7;
-}
-.dark-mode .key-list-vtree .el-tree-node > .el-tree-node__content:hover {
-  background-color: #50616b;
-}
-
-/*current select node color*/
-.key-list-vtree .el-tree-node.is-current > .el-tree-node__content {
-  background-color: #d4d4d4;
-}
-.dark-mode .key-list-vtree .el-tree-node.is-current > .el-tree-node__content {
-  background-color: #50616b;
-}
-
-/*inner custom node item*/
-.key-list-vtree .key-list-custom-node {
-  width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  /*note the following 2 items should be same value, may not consist with itemSize*/
+.key-list-vtree .key-tree-row {
+  display: flex;
+  align-items: center;
   height: 22px;
   line-height: 22px;
+  padding: 0 3px;
+  margin-right: 1px;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
 }
 
-/*checkbox*/
-.key-list-vtree .el-tree-node__content>label.el-checkbox {
-  margin-right: 4px;
+.key-list-vtree .key-tree-row:hover {
+  background-color: #e7e7e7;
+}
+.dark-mode .key-list-vtree .key-tree-row:hover {
+  background-color: #50616b;
 }
 
-/*expand icon*/
-.key-list-vtree .el-tree-node__content>.el-tree-node__expand-icon {
-  padding: 0;
-  font-size: 76%;
+.key-list-vtree .key-tree-row.is-current {
+  background-color: #d4d4d4;
 }
-/*expand icon for folder*/
-.key-list-vtree .el-tree-node__content>.el-tree-node__expand-icon:not(.is-leaf) {
+.dark-mode .key-list-vtree .key-tree-row.is-current {
+  background-color: #50616b;
+}
+
+.key-list-vtree .key-tree-indent {
+  flex: 0 0 auto;
+}
+
+.key-list-vtree .key-tree-checkbox {
+  margin: 0 4px 0 0;
+}
+
+.key-list-vtree .key-tree-expand {
+  width: 14px;
   margin-right: 6px;
   color: #7b7b7b;
-}
-/*expand icon for key, inner level key, align with folder*/
-.key-list-vtree .el-tree-node__content>.el-tree-node__expand-icon.is-leaf {
-  margin-right: 6px;
-}
-/*expand icon for key, first level key, stay left*/
-.key-list-vtree .el-tree-node__content>.el-tree-node__expand-icon.is-leaf.level1 {
-  margin-right: -4px;
+  font-size: 76%;
+  text-align: center;
+  flex: 0 0 auto;
 }
 
-/*folder icon*/
-.key-list-vtree .key-list-custom-node .fa {
+.key-list-vtree .key-tree-expand.is-leaf {
+  margin-right: 6px;
+}
+
+.key-list-vtree .key-tree-expand.expanded .fa {
+  transform: rotate(90deg);
+}
+
+.key-list-vtree .key-tree-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.key-list-vtree .fa-folder,
+.key-list-vtree .fa-folder-open {
   color: #848a90;
   font-size: 115%;
+  margin-right: 4px;
 }
-.dark-mode .key-list-vtree .key-list-custom-node .fa {
+.dark-mode .key-list-vtree .fa-folder,
+.dark-mode .key-list-vtree .fa-folder-open {
   color: #9ea4a9;
 }
 
-/*folder keys count*/
 .key-list-vtree .key-list-count {
   color: #848a90;
-  float: right;
+  margin-left: auto;
 }
 .dark-mode .key-list-vtree .key-list-count {
   color: #a3a6ad;
 }
 
-/*batch operate btn container*/
 .key-list-vtree .batch-operate {
   display: none;
   margin-bottom: 8px;
@@ -559,31 +640,27 @@ export default {
 .key-list-vtree.show-checkbox .batch-operate {
   display: block;
 }
-/*select\cancel select all col*/
 .key-list-vtree .batch-operate .fixed-col {
   float: left;
   width: 20px;
   line-height: 22px;
 }
-/*second col*/
 .key-list-vtree .batch-operate .flex-col {
   margin-left: 25px;
 }
 .key-list-vtree .batch-operate .flex-col button {
   width: 100%;
 }
-/*checkbox*/
 .key-list-vtree .batch-operate .select-cancel-all {
-  padding: 3px;
+  margin: 3px;
 }
 
-/* right menu style start */
 .key-list-right-menu {
   display: none;
   position: fixed;
   top: 0;
   left: 0;
-  padding: 0px;
+  padding: 0;
   z-index: 99999;
   overflow: hidden;
   border-radius: 3px;
@@ -596,7 +673,7 @@ export default {
 
 .key-list-right-menu ul {
   list-style: none;
-  padding: 0px;
+  padding: 0;
 }
 .key-list-right-menu ul li:not(:last-child) {
   border-bottom: 1px solid lightgrey;
@@ -618,5 +695,4 @@ export default {
 .dark-mode .key-list-right-menu ul li:hover {
   background: #344A4E;
 }
-/* right menu style end */
 </style>

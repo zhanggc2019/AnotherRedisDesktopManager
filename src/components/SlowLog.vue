@@ -2,16 +2,20 @@
 <div class="slowlog-container">
   <el-card class="box-card">
     <!-- card title -->
-    <div slot="header" class="clearfix">
-      <el-popover trigger="hover">
-        <i slot="reference" class="el-icon-question"></i>
-        Via <b><code>SLOWLOG GET</code></b>, the time threshold is: <b><pre>CONFIG GET slowlog-log-slower-than</pre></b>, and the total number is: <b><pre>CONFIG GET slowlog-max-len</pre></b>
-        Unit: <b>μs, 1000μs = 1ms</b>
-      </el-popover>
+    <template #header>
+      <div class="clearfix">
+        <el-popover trigger="hover">
+          <template #reference>
+            <ElementIcon name="el-icon-question"></ElementIcon>
+          </template>
+          Via <b><code>SLOWLOG GET</code></b>, the time threshold is: <b><pre>CONFIG GET slowlog-log-slower-than</pre></b>, and the total number is: <b><pre>CONFIG GET slowlog-max-len</pre></b>
+          Unit: <b>μs, 1000μs = 1ms</b>
+        </el-popover>
 
-      <span class="card-title">{{ $t('message.slow_log') }}</span>
-      <i v-if="isScanning" class='el-icon-loading'></i>
-    </div>
+        <span class="card-title">{{ $t('message.slow_log') }}</span>
+        <ElementIcon v-if="isScanning" name="el-icon-loading" spin></ElementIcon>
+      </div>
+    </template>
 
     <!-- table header -->
     <div class="table-header">
@@ -20,7 +24,7 @@
       </span>
       <span @click="toggleOrder" class="reorder-container" title="Sort">
         <span>Cost</span>
-        <span class="el-icon-d-caret"></span>
+        <ElementIcon name="el-icon-d-caret"></ElementIcon>
       </span>
     </div>
 
@@ -46,7 +50,7 @@
 
     <!-- empty list -->
     <div v-else class="list-body empty-list-body">
-      <b class="el-icon-star-on"> No Slow Log</b>
+      <b><ElementIcon name="el-icon-star-on"></ElementIcon> No Slow Log</b>
     </div>
 
     <!-- table footer -->
@@ -60,6 +64,7 @@
 
 <script type="text/javascript">
 import { RecycleScroller } from 'vue-virtual-scroller';
+import ElementIcon from '@/components/ElementIcon';
 
 export default {
   data() {
@@ -73,7 +78,7 @@ export default {
     };
   },
   props: ['client', 'hotKeyScope'],
-  components: { RecycleScroller },
+  components: { RecycleScroller, ElementIcon },
   methods: {
     initShow() {
       this.cmdList = [];
@@ -159,7 +164,7 @@ export default {
     this.initShow();
     this.initShortcut();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.$shortcut.deleteScope(this.hotKeyScope);
   },
 };

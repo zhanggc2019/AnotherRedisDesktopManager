@@ -1,17 +1,29 @@
 <template>
-  <div>
+  <div ref="tabsRoot">
     <el-tabs ref="tabs" class='tabs-container' v-model="selectedTabName" type="card" closable @tab-remove="removeTab" @tab-click="tabClick">
       <el-tab-pane
         v-for="(item) in tabs"
         :key="item.name"
         :name="item.name">
-        <span slot="label" :title="item.title">
-          <i :class="iconNameByComponent(item.component)"></i>
-          <span>{{ item.label }}</span>
-        </span>
+        <template #label>
+          <span :title="item.title">
+            <ElementIcon
+              v-if="isElIconName(iconNameByComponent(item.component))"
+              :name="iconNameByComponent(item.component)">
+            </ElementIcon>
+            <i v-else :class="iconNameByComponent(item.component)"></i>
+            <span>{{ item.label }}</span>
+          </span>
+        </template>
 
         <Status v-if="item.component === 'status'" :client='item.client' class='tab-content-wrappe' :hotKeyScope='item.name'></Status>
-        <CliTab v-else-if="item.component === 'cli'" :client='item.client' class='tab-content-wrappe' :hotKeyScope='item.name'></CliTab>
+        <CliTab
+          v-else-if="item.component === 'cli'"
+          :ref="(component) => setTabContentRef(item.name, component)"
+          :client='item.client'
+          class='tab-content-wrappe'
+          :hotKeyScope='item.name'>
+        </CliTab>
         <DeleteBatch v-else-if="item.component === 'delbatch'" :client='item.client' :rule="item.rule" class='tab-content-wrappe' :hotKeyScope='item.name'></DeleteBatch>
         <MemoryAnalysis v-else-if="item.component === 'memory'" :client='item.client' :pattern="item.pattern" class='tab-content-wrappe' :hotKeyScope='item.name'></MemoryAnalysis>
         <SlowLog v-else-if="item.component === 'slowlog'" :client='item.client' class='tab-content-wrappe' :hotKeyScope='item.name'></SlowLog>
@@ -37,16 +49,19 @@ import KeyDetail from '@/components/KeyDetail';
 import DeleteBatch from '@/components/DeleteBatch';
 import MemoryAnalysis from '@/components/MemoryAnalysis';
 import SlowLog from '@/components/SlowLog';
+import ElementIcon from '@/components/ElementIcon';
+import { isElIconName } from '@/element-plus-icons';
 
 export default {
   data() {
     return {
       selectedTabName: '',
       tabs: [],
+      tabContentRefs: {},
     };
   },
   components: {
-    Status, KeyDetail, CliTab, DeleteBatch, MemoryAnalysis, SlowLog,
+    Status, KeyDetail, CliTab, DeleteBatch, MemoryAnalysis, SlowLog, ElementIcon,
   },
   watch: {
     selectedTabName(value) {
@@ -108,10 +123,23 @@ export default {
     });
   },
   methods: {
+    getTabsRoot() {
+      return this.$refs.tabsRoot instanceof HTMLElement ? this.$refs.tabsRoot : null;
+    },
+    getTabsHeader() {
+      const tabsRoot = this.getTabsRoot();
+      return tabsRoot ? tabsRoot.querySelector('.el-tabs__header') : null;
+    },
+    getTabHeaderItems() {
+      const tabsHeader = this.getTabsHeader();
+      return tabsHeader ? tabsHeader.querySelectorAll('.el-tabs__item') : [];
+    },
     removeTab(removeName) {
       if (!removeName) {
         return;
       }
+
+      delete this.tabContentRefs[removeName];
 
       const { tabs } = this;
       let nextSelectTab;
@@ -133,10 +161,21 @@ export default {
     tabClick(tab, event) {
       this.$shortcut.setScope(this.selectedTabName);
 
-      if (tab.$children && tab.$children[0] && (typeof tab.$children[0].tabClick === 'function')) {
-        tab.$children[0].tabClick();
+      const activeTabContent = this.tabContentRefs[this.selectedTabName];
+
+      if (activeTabContent && (typeof activeTabContent.tabClick === 'function')) {
+        activeTabContent.tabClick();
       }
     },
+    setTabContentRef(name, component) {
+      if (!component) {
+        delete this.tabContentRefs[name];
+        return;
+      }
+
+      this.tabContentRefs[name] = component;
+    },
+    isElIconName,
     addStatusTab(client, tabName, newTab = true) {
       const newTabItem = {
         name: `status_${tabName}`,
@@ -293,9 +332,9 @@ export default {
       });
     },
     bindTabEvents() {
-      const tabs = this.$refs.tabs.$el.querySelector('.el-tabs__header');
-      tabs && tabs.addEventListener('contextmenu', this.openContextMenu);
-      tabs && tabs.addEventListener('mousewheel', this.wheelToggleTabs);
+      const tabsHeader = this.getTabsHeader();
+      tabsHeader && tabsHeader.addEventListener('contextmenu', this.openContextMenu);
+      tabsHeader && tabsHeader.addEventListener('wheel', this.wheelToggleTabs, { passive: true });
     },
     wheelToggleTabs(event) {
       let index = this.tabs.findIndex(item => item.name === this.selectedTabName);
@@ -313,14 +352,14 @@ export default {
       this.preTabId = '';
       this.hideAllMenus();
 
-      const items = this.$refs.tabs.$el.querySelectorAll('.el-tabs__header .el-tabs__item');
+      const items = this.getTabHeaderItems();
 
       if (!items.length) {
         return;
       }
 
       for (const item of items) {
-        if (item.contains(event.srcElement)) {
+        if (item.contains(event.target)) {
           this.preTabId = item.id.substr(4); // remove prefix "tab-"
         }
       }
@@ -378,7 +417,9 @@ export default {
   },
   mounted() {
     this.initShortcut();
-    this.bindTabEvents();
+    this.$nextTick(() => {
+      this.bindTabEvents();
+    });
   },
 };
 </script>

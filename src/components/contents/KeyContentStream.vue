@@ -11,19 +11,26 @@
         </el-form-item>
         <!-- max value -->
         <el-form-item label="Max">
-          <el-input v-model="maxId" @keyup.enter.native="initShow" type="primary" placeholder="Max ID, default +" :title='$t("message.enter_to_search")' size="mini">Max</el-input>
+          <el-input v-model="maxId" @keyup.enter="initShow" type="primary" placeholder="Max ID, default +" :title='$t("message.enter_to_search")' size="mini">Max</el-input>
         </el-form-item>
         <!-- min value -->
         <el-form-item label="Min">
-          <el-input v-model="minId" @keyup.enter.native="initShow" type="primary" placeholder="Min ID, default -" :title='$t("message.enter_to_search")' size="mini">Min</el-input>
+          <el-input v-model="minId" @keyup.enter="initShow" type="primary" placeholder="Min ID, default -" :title='$t("message.enter_to_search")' size="mini">Min</el-input>
         </el-form-item>
       </el-form>
 
       <!-- edit & add dialog -->
-      <el-dialog :title="dialogTitle" :visible.sync="editDialog" @open="openDialog" :close-on-click-modal="false">
+      <el-dialog
+        :title="dialogTitle"
+        v-model="editDialog"
+        :close-on-click-modal="false"
+        @open="openDialog">
         <el-form>
           <el-form-item label="ID">
-            <InputBinary :disabled="!!beforeEditItem.contentString" :content.sync="editLineItem.id"></InputBinary>
+            <InputBinary
+              :disabled="!!beforeEditItem.contentString"
+              :content="editLineItem.id"
+              @update:content="editLineItem.id = $event"></InputBinary>
           </el-form-item>
 
           <el-form-item label="Value (JSON string)">
@@ -31,14 +38,19 @@
           </el-form-item>
         </el-form>
 
-        <div slot="footer" class="dialog-footer">
-          <el-button @click="editDialog = false">{{ $t('el.messagebox.cancel') }}</el-button>
-          <el-button v-if='!beforeEditItem.contentString' type="primary" @click="editLine">{{ $t('el.messagebox.confirm') }}</el-button>
-        </div>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button @click="editDialog = false">{{ $t('el.messagebox.cancel') }}</el-button>
+            <el-button v-if='!beforeEditItem.contentString' type="primary" @click="editLine">{{ $t('el.messagebox.confirm') }}</el-button>
+          </div>
+        </template>
       </el-dialog>
 
       <!-- groups info dialog -->
-      <el-dialog width='760px' title='Groups' :visible.sync="groupsVisible">
+      <el-dialog
+        width='760px'
+        title='Groups'
+        v-model="groupsVisible">
         <el-table
           size='mini'
           ref='groupsTable'
@@ -47,7 +59,7 @@
           @row-click='toggleGroupRow'
           :data="groups">
           <el-table-column type="expand">
-            <template slot-scope="props">
+            <template #default="props">
               <el-table :data='consumersDict[props.row.name]'>
                 <el-table-column width='62px'>
                 </el-table-column>
@@ -101,18 +113,18 @@
         <vxe-column field="id" title="ID" sortable></vxe-column>
         <vxe-column field="contentString" title="Value" sortable></vxe-column>
         <vxe-column title="Operate" width="166">
-          <template slot-scope="scope" slot="header">
+          <template #header>
             <el-input size="mini"
               :placeholder="$t('message.key_to_search')"
-              :suffix-icon="loadingIcon"
-              @keyup.native.enter='initShow()'
+              :suffix-icon="resolveElIcon(loadingIcon)"
+              @keyup.enter='initShow()'
               v-model="filterValue">
             </el-input>
           </template>
-          <template slot-scope="scope">
-            <el-button type="text" @click="$util.copyToClipboard(scope.row.contentString)" icon="el-icon-document" :title="$t('message.copy')"></el-button>
-            <el-button type="text" @click="showEditDialog(scope.row)" icon="el-icon-view" :title="$t('message.detail')"></el-button>
-            <el-button type="text" @click="deleteLine(scope.row)" icon="el-icon-delete" :title="$t('el.upload.delete')"></el-button>
+          <template #default="scope">
+            <el-button type="text" @click="$util.copyToClipboard(scope.row.contentString)" :icon="resolveElIcon('el-icon-document')" :title="$t('message.copy')"></el-button>
+            <el-button type="text" @click="showEditDialog(scope.row)" :icon="resolveElIcon('el-icon-view')" :title="$t('message.detail')"></el-button>
+            <el-button type="text" @click="deleteLine(scope.row)" :icon="resolveElIcon('el-icon-delete')" :title="$t('el.upload.delete')"></el-button>
             <el-button type="text" @click="dumpCommand(scope.row)" icon="fa fa-code" :title="$t('message.dump_to_clipboard')"></el-button>
           </template>
         </vxe-column>
@@ -137,6 +149,7 @@
 import FormatViewer from '@/components/FormatViewer';
 import InputBinary from '@/components/InputBinary';
 import { VxeTable, VxeColumn } from 'vxe-table';
+import { resolveElIcon } from '@/element-plus-icons';
 
 export default {
   data() {
@@ -160,7 +173,9 @@ export default {
       consumersDict: {},
     };
   },
-  components: { FormatViewer, InputBinary, VxeTable, VxeColumn },
+  components: {
+    FormatViewer, InputBinary, VxeTable, VxeColumn,
+  },
   props: ['client', 'redisKey'],
   computed: {
     dialogTitle() {
@@ -177,9 +192,10 @@ export default {
           this.$refs.contentTable && this.$refs.contentTable.scrollTo(0, 99999999);
         }, 0);
       }
-    }
+    },
   },
   methods: {
+    resolveElIcon,
     initShow(resetTable = true) {
       resetTable && this.resetTable();
       this.loadingIcon = 'el-icon-loading';
@@ -386,7 +402,10 @@ export default {
       }
 
       this.client.call('XINFO', 'CONSUMERS', this.redisKey, row.name).then((reply) => {
-        this.$set(this.consumersDict, row.name, this.formatInfo(reply));
+        this.consumersDict = {
+          ...this.consumersDict,
+          [row.name]: this.formatInfo(reply),
+        };
       });
     },
     toggleGroupRow(row) {
@@ -411,7 +430,7 @@ export default {
   mounted() {
     this.initShow();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.cancelScanning = true;
   },
 };

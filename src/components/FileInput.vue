@@ -5,14 +5,14 @@
     @clear='clearFile'
     @focus='focus'
     :placeholder='placeholder'>
-    <template slot="append">
+    <template #append>
       <el-button @click='showFileSelector'>...</el-button>
     </template>
   </el-input>
 </template>
 
 <script type="text/javascript">
-import { remote } from 'electron';
+import electron from '@/electron';
 
 export default {
   props: {
@@ -30,7 +30,7 @@ export default {
       e.target.blur();
     },
     showFileSelector() {
-      remote.dialog.showOpenDialog(remote.getCurrentWindow(), {
+      electron.showOpenDialog({
         securityScopedBookmarks: true,
         properties: ['openFile', 'showHiddenFiles'],
       }).then((reply) => {

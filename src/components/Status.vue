@@ -5,7 +5,7 @@
     <el-col>
       <div style="float: right;">
         <el-tag type="info">
-          <i class="el-icon-refresh"></i>
+          <ElementIcon name="el-icon-refresh"></ElementIcon>
           {{ $t('message.auto_refresh') }}
         </el-tag>
 
@@ -22,10 +22,12 @@
     <!-- server -->
     <el-col :span="8">
       <el-card class="box-card">
-        <div slot="header">
-          <i class="fa fa-server"></i>
-          <span>{{ $t('message.server') }}</span>
-        </div>
+        <template #header>
+          <div>
+            <i class="fa fa-server"></i>
+            <span>{{ $t('message.server') }}</span>
+          </div>
+        </template>
 
         <p class="server-status-tag-p">
           <el-tag class='server-status-container' type="info" size="big">
@@ -53,10 +55,12 @@
     <!-- memory row -->
     <el-col :span="8">
       <el-card class="box-card">
-        <div slot="header">
-          <i class="fa fa-microchip"></i>
-          <span>{{ $t('message.memory') }}</span>
-        </div>
+        <template #header>
+          <div>
+            <i class="fa fa-microchip"></i>
+            <span>{{ $t('message.memory') }}</span>
+          </div>
+        </template>
 
         <p class="server-status-tag-p">
           <el-tag class='server-status-container' type="info" size="big">
@@ -84,10 +88,12 @@
     <!-- stats row -->
     <el-col :span="8">
       <el-card class="box-card">
-        <div slot="header">
-          <i class="fa fa-thermometer-three-quarters"></i>
-          <span>{{ $t('message.stats') }}</span>
-        </div>
+        <template #header>
+          <div>
+            <i class="fa fa-thermometer-three-quarters"></i>
+            <span>{{ $t('message.stats') }}</span>
+          </div>
+        </template>
 
         <p class="server-status-tag-p">
           <el-tag class='server-status-container' type="info" size="big">
@@ -117,10 +123,12 @@
   <el-row class="status-card">
     <el-col>
       <el-card class="box-card">
-        <div slot="header">
-          <i class="fa fa-bar-chart"></i>
-          <span>{{ $t('message.key_statistics') }}</span>
-        </div>
+        <template #header>
+          <div>
+            <i class="fa fa-bar-chart"></i>
+            <span>{{ $t('message.key_statistics') }}</span>
+          </div>
+        </template>
 
         <el-table
           :data="DBKeys"
@@ -165,13 +173,15 @@
   <el-row class="status-card">
     <el-col>
       <el-card class="box-card">
-        <div slot="header">
-          <i class="fa fa-info-circle"></i>
-          <span>{{ $t('message.all_redis_info') }}</span>
-          <!-- search input -->
-          <el-input v-model='allInfoFilter' size='mini' suffix-icon="el-icon-search" class='status-filter-input'>
-          </el-input>
-        </div>
+        <template #header>
+          <div>
+            <i class="fa fa-info-circle"></i>
+            <span>{{ $t('message.all_redis_info') }}</span>
+            <!-- search input -->
+            <el-input v-model='allInfoFilter' size='mini' :suffix-icon="resolveElIcon('el-icon-search')" class='status-filter-input'>
+            </el-input>
+          </div>
+        </template>
 
         <el-table
           :data="AllRedisInfo"
@@ -197,6 +207,8 @@
 
 <script>
 import ScrollToTop from '@/components/ScrollToTop';
+import ElementIcon from '@/components/ElementIcon';
+import { resolveElIcon } from '@/element-plus-icons';
 
 export default {
   data() {
@@ -210,7 +222,7 @@ export default {
     };
   },
   props: ['client', 'hotKeyScope'],
-  components: { ScrollToTop },
+  components: { ScrollToTop, ElementIcon },
   computed: {
     AllRedisInfo() {
       const infos = [];
@@ -234,21 +246,21 @@ export default {
       return infos;
     },
     isCluster() {
-      return this.connectionStatus['cluster_enabled'] == '1';
+      return this.connectionStatus.cluster_enabled == '1';
     },
   },
   methods: {
+    resolveElIcon,
     initShow() {
       this.client.info().then((reply) => {
         this.connectionStatus = this.initStatus(reply);
         // set global param
-        this.client.ardmRedisVersion = this.connectionStatus['redis_version'];
+        this.client.ardmRedisVersion = this.connectionStatus.redis_version;
 
         // init db keys info
         if (this.isCluster) {
           this.initClusterKeys();
-        }
-        else {
+        } else {
           this.DBKeys = this.initDbKeys(this.connectionStatus);
         }
       }).catch((e) => {
@@ -312,7 +324,7 @@ export default {
         if (/^db\d+/.test(i)) {
           const array = status[i].split(',');
 
-          const keys = parseInt(array[0] ? array[0].split('=')[1]: NaN);
+          const keys = parseInt(array[0] ? array[0].split('=')[1] : NaN);
           const expires = parseInt(array[1] ? array[1].split('=')[1] : NaN);
           const avg_ttl = parseInt(array[2] ? array[2].split('=')[1] : NaN);
 
@@ -341,7 +353,7 @@ export default {
       }
 
       // get real node name in ssh+cluster, instead of local port
-      const natMap = this.client.options.natMap;
+      const { natMap } = this.client.options;
       const clusterNodeNames = {};
 
       if (natMap && Object.keys(natMap).length) {
@@ -385,7 +397,7 @@ export default {
     this.refreshInit();
     this.initShortcut();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     // clear interval when tab is closed
     clearInterval(this.refreshTimer);
     this.$shortcut.deleteScope(this.hotKeyScope);

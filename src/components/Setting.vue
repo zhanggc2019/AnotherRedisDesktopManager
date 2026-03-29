@@ -1,6 +1,10 @@
 <template>
   <!-- setting dialog -->
-  <el-dialog :title="$t('message.settings')" :visible.sync="visible" custom-class="setting-main-dialog">
+  <el-dialog
+    :title="$t('message.settings')"
+    v-model="visible"
+    custom-class="setting-main-dialog"
+    >
     <el-form label-position="top" size="mini">
 
       <el-card :header="$t('message.ui_settings')" class="setting-card">
@@ -42,17 +46,21 @@
           <el-col :sm="12" :lg="7">
             <!-- font-family -->
             <el-form-item :label="$t('message.font_family')">
-              <span slot="label">
-                {{ $t('message.font_family') }}
-                <el-popover
-                  placement="top-start"
-                  :title="$t('message.font_faq_title')"
-                  trigger="hover">
-                  <i slot="reference" class="el-icon-question"></i>
-                  <p v-html="$t('message.font_faq')"></p>
-                </el-popover>
-                <i v-if="loadingFonts" class="el-icon-loading"></i>
-              </span>
+              <template #label>
+                <span>
+                  {{ $t('message.font_family') }}
+                  <el-popover
+                    placement="top-start"
+                    :title="$t('message.font_faq_title')"
+                    trigger="hover">
+                    <template #reference>
+                      <ElementIcon name="el-icon-question"></ElementIcon>
+                    </template>
+                    <p v-html="$t('message.font_faq')"></p>
+                  </el-popover>
+                  <ElementIcon v-if="loadingFonts" name="el-icon-loading" spin></ElementIcon>
+                </span>
+              </template>
               <!-- font-family select -->
               <el-select v-model="form.fontFamily" @visible-change="getAllFonts" allow-create default-first-option
                          filterable multiple class="setting-font-select">
@@ -87,32 +95,38 @@
               <!-- <el-switch v-model='form.showLoadAllKeys'></el-switch>
               {{ $t('message.show_load_all_keys') }} -->
 
-              <span slot="label">
-                {{ $t('message.keys_per_loading') }}
-                <el-popover
-                  :content="$t('message.keys_per_loading_tip')"
-                  placement="top-start"
-                  trigger="hover">
-                  <i slot="reference" class="el-icon-question"></i>
-                </el-popover>
-              </span>
+              <template #label>
+                <span>
+                  {{ $t('message.keys_per_loading') }}
+                  <el-popover
+                    :content="$t('message.keys_per_loading_tip')"
+                    placement="top-start"
+                    trigger="hover">
+                    <template #reference>
+                      <ElementIcon name="el-icon-question"></ElementIcon>
+                    </template>
+                  </el-popover>
+                </span>
+              </template>
             </el-form-item>
           </el-col>
           <el-col :sm="12" :lg="12">
             <!-- export connections -->
             <el-form-item :label="$t('message.config_connections')">
-              <el-button icon="el-icon-upload2" @click="exportConnection">{{ $t('message.export') }}</el-button>
-              <el-button icon="el-icon-download" @click="showImportDialog">{{ $t('message.import') }}</el-button>
+              <el-button :icon="resolveElIcon('el-icon-upload2')" @click="exportConnection">{{ $t('message.export') }}</el-button>
+              <el-button :icon="resolveElIcon('el-icon-download')" @click="showImportDialog">{{ $t('message.import') }}</el-button>
             </el-form-item>
           </el-col>
         </el-row>
       </el-card>
 
       <el-card class="setting-card">
-        <div slot="header">
-          {{$t('message.pre_version')}}
-          <el-tag type="info">{{ appVersion }}</el-tag>
-        </div>
+        <template #header>
+          <div>
+            {{$t('message.pre_version')}}
+            <el-tag type="info">{{ appVersion }}</el-tag>
+          </div>
+        </template>
         <div class="current-version">
           <a href="###" @click.stop.prevent="showHotkeys">{{ $t('message.hotkey') }}</a>
           <a href="###" @click.stop.prevent="clearCache">{{ $t('message.clear_cache') }}</a>
@@ -127,7 +141,7 @@
     <el-dialog
       width="400px"
       :title="$t('message.select_import_file')"
-      :visible.sync="importConnectionVisible"
+      v-model="importConnectionVisible"
       append-to-body>
 
       <el-upload
@@ -138,27 +152,33 @@
         :limit="1"
         :on-change="loadConnectionFile"
         drag>
-        <i class="el-icon-upload"></i>
+        <ElementIcon name="el-icon-upload"></ElementIcon>
         <div class="el-upload__text">{{ $t('message.put_file_here') }}</div>
       </el-upload>
 
-      <div slot="footer" class="dialog-footer">
-        <el-button @click="importConnnection">{{ $t('el.messagebox.confirm') }}</el-button>
-      </div>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="importConnnection">{{ $t('el.messagebox.confirm') }}</el-button>
+        </div>
+      </template>
     </el-dialog>
 
-    <div slot="footer" class="dialog-footer">
-      <el-button @click="visible = false">{{ $t('el.messagebox.cancel') }}</el-button>
-      <el-button type="primary" @click="saveSettings">{{ $t('el.messagebox.confirm') }}</el-button>
-    </div>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="visible = false">{{ $t('el.messagebox.cancel') }}</el-button>
+        <el-button type="primary" @click="saveSettings">{{ $t('el.messagebox.confirm') }}</el-button>
+      </div>
+    </template>
 
   </el-dialog>
 </template>
 
 <script type="text/javascript">
 import storage from '@/storage.js';
-import { ipcRenderer } from 'electron';
+import electron from '@/electron';
 import LanguageSelector from '@/components/LanguageSelector';
+import ElementIcon from '@/components/ElementIcon';
+import { resolveElIcon } from '@/element-plus-icons';
 
 export default {
   data() {
@@ -179,27 +199,36 @@ export default {
       themeMode: 'system',
     };
   },
-  components: { LanguageSelector },
+  components: { LanguageSelector, ElementIcon },
   computed: {
     // themeList in computed to activate i18n
     themeList() {
       return {
         system: this.$t('message.theme_system'),
         light: this.$t('message.theme_light'),
-        dark: this.$t('message.theme_dark')
+        dark: this.$t('message.theme_dark'),
       };
     },
   },
   methods: {
+    resolveElIcon,
     show() {
       this.visible = true;
     },
     restoreSettings() {
       const settings = storage.getSetting();
-      this.form = { ...this.form, ...settings };
+      this.form = {
+        ...this.form,
+        ...settings,
+        fontFamily: Array.isArray(settings.fontFamily)
+          ? settings.fontFamily
+          : (settings.fontFamily ? [settings.fontFamily] : []),
+        zoomFactor: Number(settings.zoomFactor || this.form.zoomFactor),
+        keysPageSize: Number(settings.keysPageSize || this.form.keysPageSize),
+      };
 
       // theme
-      let theme = localStorage.theme;
+      let { theme } = localStorage;
       if (!Object.keys(this.themeList).includes(theme)) {
         theme = 'system';
       }
@@ -217,11 +246,10 @@ export default {
       globalChangeTheme(this.themeMode);
     },
     changeZoom() {
-      const { webFrame } = require('electron');
       let { zoomFactor } = this.form;
 
       zoomFactor = zoomFactor || 1.0;
-      webFrame.setZoomFactor(zoomFactor);
+      electron.setZoomFactor(zoomFactor);
     },
     showImportDialog() {
       this.importConnectionVisible = true;
@@ -276,7 +304,7 @@ export default {
       this.$bus.$emit('update-check', true);
     },
     bindGetAllFonts() {
-      ipcRenderer.on('send-all-fonts', (event, fonts) => {
+      this.removeFontListener = electron.on('send-all-fonts', (fonts) => {
         fonts.unshift('Default Initial');
 
         this.allFonts = [...new Set(fonts)];
@@ -286,7 +314,7 @@ export default {
     getAllFonts() {
       if (this.allFonts.length === 0) {
         this.loadingFonts = true;
-        ipcRenderer.send('get-all-fonts');
+        electron.send('get-all-fonts');
       }
     },
     clearCache() {
@@ -304,6 +332,9 @@ export default {
   mounted() {
     this.restoreSettings();
     this.bindGetAllFonts();
+  },
+  beforeUnmount() {
+    this.removeFontListener && this.removeFontListener();
   },
 };
 </script>
@@ -334,6 +365,22 @@ export default {
 
 .setting-main-dialog .setting-card .setting-row {
   flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.setting-main-dialog .setting-card .setting-row .el-col {
+  margin-bottom: 10px;
+}
+
+.setting-main-dialog .el-select,
+.setting-main-dialog .el-input-number {
+  width: 100%;
+}
+
+.setting-main-dialog .current-version {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 /* add height: fix el-select jitter when multiple*/

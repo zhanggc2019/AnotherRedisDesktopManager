@@ -2,7 +2,8 @@
 <div class="memory-analysis-container">
   <el-card class="box-card">
     <!-- card title -->
-    <div slot="header" class="clearfix">
+    <template #header>
+      <div class="clearfix">
       <!-- setting dialog -->
       <el-popover
         placement="bottom"
@@ -11,15 +12,19 @@
         <div>
           <p>If result is "0", the <b>MEMORY</b> command may be disabled on Redis.</p>
           <p style="margin: 0;">Filter Min Size:</p>
-          <el-input v-model="minSizeKB" @keyup.native.enter="initKeys()" size="mini">
-            <i slot="suffix">KB</i>
+          <el-input v-model="minSizeKB" @keyup.enter="initKeys()" size="mini">
+            <template #suffix>
+              <i>KB</i>
+            </template>
           </el-input>
         </div>
-        <i slot="reference" class="el-icon-setting"></i>
+        <template #reference>
+          <ElementIcon name="el-icon-setting"></ElementIcon>
+        </template>
       </el-popover>
 
       <span class="analysis-title">{{ $t('message.memory_analysis') }}</span>
-      <i v-if="isScanning" class='el-icon-loading'></i>
+      <ElementIcon v-if="isScanning" name="el-icon-loading" spin></ElementIcon>
       <el-tag size="mini">
         Total: {{keysList.length}} &nbsp;
         Size: {{$util.humanFileSize(totalSize)}}
@@ -35,7 +40,8 @@
       <el-button v-else @click="toggleScanning(false)" class="operate-btn">
         <i class="fa fa-play"> {{ $t('message.begin') }}</i>
       </el-button>
-    </div>
+      </div>
+    </template>
 
     <!-- table header -->
     <div class="keys-header">
@@ -45,7 +51,7 @@
       </span>
       <span @click="toggleOrder" class="size-container">
         <span class="header-title">Size</span>
-        <span class="el-icon-d-caret"></span>
+        <ElementIcon name="el-icon-d-caret"></ElementIcon>
       </span>
     </div>
 
@@ -77,6 +83,7 @@
 
 <script type="text/javascript">
 import { RecycleScroller } from 'vue-virtual-scroller';
+import ElementIcon from '@/components/ElementIcon';
 
 export default {
   data() {
@@ -93,7 +100,7 @@ export default {
     };
   },
   props: ['client', 'hotKeyScope', 'pattern'],
-  components: { RecycleScroller },
+  components: { RecycleScroller, ElementIcon },
   computed: {
     minSizeB() {
       return parseInt(this.minSizeKB) * 1024;
@@ -253,7 +260,7 @@ export default {
     this.initKeys();
     this.initShortcut();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.$shortcut.deleteScope(this.hotKeyScope);
     this.toggleScanning(true);
   },

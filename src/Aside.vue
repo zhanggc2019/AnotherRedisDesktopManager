@@ -3,17 +3,17 @@
     <div>
       <!-- new connection button -->
       <div class="aside-top-container">
-        <el-button class='aside-setting-btn' type="primary" icon="el-icon-time" @click="$refs.commandLogDialog.show()" :title='$t("message.command_log")+" Ctrl+g"' plain></el-button>
-        <el-button class='aside-setting-btn' type="primary" icon="el-icon-setting" @click="$refs.settingDialog.show()" :title='$t("message.settings")+" Ctrl+,"' plain></el-button>
+        <el-button class='aside-setting-btn' type="primary" :icon="resolveElIcon('el-icon-time')" @click="$refs.commandLogDialog.show()" :title='$t("message.command_log")+" Ctrl+g"' plain></el-button>
+        <el-button class='aside-setting-btn' type="primary" :icon="resolveElIcon('el-icon-setting')" @click="$refs.settingDialog.show()" :title='$t("message.settings")+" Ctrl+,"' plain></el-button>
 
         <div class="aside-new-connection-container">
-          <el-button class="aside-new-connection-btn" type="info" @click="addNewConnection" icon="el-icon-circle-plus" :title='$t("message.new_connection")+" Ctrl+n"'>{{ $t('message.new_connection') }}</el-button>
+          <el-button class="aside-new-connection-btn" type="info" @click="addNewConnection" :icon="resolveElIcon('el-icon-circle-plus')" :title='$t("message.new_connection")+" Ctrl+n"'>{{ $t('message.new_connection') }}</el-button>
         </div>
       </div>
 
       <!-- new connection dialog -->
       <NewConnectionDialog
-        @editConnectionFinished="editConnectionFinished"
+        @edit-connection-finished="editConnectionFinished"
         ref="newConnectionDialog">
       </NewConnectionDialog>
 
@@ -40,6 +40,7 @@ import NewConnectionDialog from '@/components/NewConnectionDialog';
 import CommandLog from '@/components/CommandLog';
 import HotKeys from '@/components/HotKeys';
 import CustomFormatter from '@/components/CustomFormatter';
+import { resolveElIcon } from '@/element-plus-icons';
 
 export default {
   data() {
@@ -55,6 +56,7 @@ export default {
     addNewConnection() {
       this.$refs.newConnectionDialog.show();
     },
+    resolveElIcon,
     initShortcut() {
       // new connection
       this.$shortcut.bind('ctrl+n, ⌘+n', () => {

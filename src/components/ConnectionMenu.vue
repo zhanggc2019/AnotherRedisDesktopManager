@@ -11,10 +11,12 @@
       class="connection-right-icon fa fa-terminal font-weight-bold"
       @click.stop.prevent="openCli">
     </i>
-    <i :title="$t('message.refresh_connection')"
-      class='connection-right-icon el-icon-refresh font-weight-bold'
+    <ElementIcon
+      :title="$t('message.refresh_connection')"
+      name="el-icon-refresh"
+      class="connection-right-icon font-weight-bold"
       @click.stop.prevent="refreshConnection">
-    </i>
+    </ElementIcon>
 
     <!-- more operate menu -->
     <el-dropdown
@@ -22,57 +24,60 @@
       placement='bottom-start'
       :show-timeout=100
       :hide-timeout=300>
-      <i class="connection-right-icon el-icon-menu" @click.stop></i>
-      <el-dropdown-menu class='connection-menu-more-ul' slot="dropdown">
+      <ElementIcon name="el-icon-menu" class="connection-right-icon" @click.stop></ElementIcon>
+      <template #dropdown>
+        <el-dropdown-menu class='connection-menu-more-ul'>
 
 
-        <el-dropdown-item @click.native='closeConnection'>
+        <el-dropdown-item @click='closeConnection'>
           <span><i class='more-operate-ico fa fa-power-off'></i>&nbsp;{{ $t('message.close_connection') }}</span>
         </el-dropdown-item>
-        <el-dropdown-item @click.native='showEditConnection'>
-          <span><i class='more-operate-ico el-icon-edit-outline'></i>&nbsp;{{ $t('message.edit_connection') }}</span>
+        <el-dropdown-item @click='showEditConnection'>
+          <span><ElementIcon name="el-icon-edit-outline" class="more-operate-ico"></ElementIcon>&nbsp;{{ $t('message.edit_connection') }}</span>
         </el-dropdown-item>
-        <el-dropdown-item @click.native='deleteConnection'>
-          <span><i class='more-operate-ico el-icon-delete'></i>&nbsp;{{ $t('message.del_connection') }}</span>
+        <el-dropdown-item @click='deleteConnection'>
+          <span><ElementIcon name="el-icon-delete" class="more-operate-ico"></ElementIcon>&nbsp;{{ $t('message.del_connection') }}</span>
         </el-dropdown-item>
-        <el-dropdown-item @click.native='duplicateConnection'>
+        <el-dropdown-item @click='duplicateConnection'>
           <span><i class='more-operate-ico fa fa-clone'></i>&nbsp;{{ $t('message.duplicate_connection') }}</span>
         </el-dropdown-item>
 
         <!-- menu color picker -->
         <el-tooltip placement="right" effect="light">
-          <el-color-picker
-            slot='content'
-            v-model="menuColor"
-            @change='changeColor'
-            :predefine="['#f56c6c', '#F5C800', '#409EFF', '#85ce61', '#c6e2ff']">
-          </el-color-picker>
+          <template #content>
+            <el-color-picker
+              v-model="menuColor"
+              @change='changeColor'
+              :predefine="['#f56c6c', '#F5C800', '#409EFF', '#85ce61', '#c6e2ff']">
+            </el-color-picker>
+          </template>
 
           <el-dropdown-item divided>
             <span><i class='more-operate-ico fa fa-bookmark-o'></i>&nbsp;{{ $t('message.mark_color') }}</span>
           </el-dropdown-item>
         </el-tooltip>
 
-        <el-dropdown-item @click.native='memoryAnalisys'>
+        <el-dropdown-item @click='memoryAnalisys'>
           <span><i class='more-operate-ico fa fa-table'></i>&nbsp;{{ $t('message.memory_analysis') }}</span>
         </el-dropdown-item>
-        <el-dropdown-item @click.native='slowLog'>
+        <el-dropdown-item @click='slowLog'>
           <span><i class='more-operate-ico fa fa-hourglass-start'></i>&nbsp;{{ $t('message.slow_log') }}</span>
         </el-dropdown-item>
-        <el-dropdown-item @click.native='importKeys' divided>
-          <span><i class='more-operate-ico el-icon-download'></i>&nbsp;{{ $t('message.import') }} Key</span>
+        <el-dropdown-item @click='importKeys' divided>
+          <span><ElementIcon name="el-icon-download" class="more-operate-ico"></ElementIcon>&nbsp;{{ $t('message.import') }} Key</span>
         </el-dropdown-item>
-        <el-dropdown-item @click.native='execFileCMDS'>
+        <el-dropdown-item @click='execFileCMDS'>
           <span><i class='more-operate-ico fa fa-file-code-o'></i>&nbsp;{{ $t('message.import') }} CMD</span>
         </el-dropdown-item>
-        <el-dropdown-item @click.native='flushDB'>
+        <el-dropdown-item @click='flushDB'>
           <span><i class='more-operate-ico fa fa-exclamation-triangle'></i>&nbsp;{{ $t('message.flushdb') }}</span>
         </el-dropdown-item>
 
-      </el-dropdown-menu>
+        </el-dropdown-menu>
+      </template>
     </el-dropdown>
   </div>
-  <div :title="connectionTitle()" class="connection-name">{{config.connectionName}}
+  <div :title="connectionTitle()" class="connection-name">{{ resolvedConnectionName }}
     <!-- <i v-if="client" style="position: absolute; left: 2px; bottom: 5px; width: 8px; height: 8px; border-radius: 4px; background-color: green;"></i> -->
   </div>
 
@@ -80,7 +85,7 @@
   <NewConnectionDialog
     editMode='true'
     :config='config'
-    @editConnectionFinished='editConnectionFinished'
+    @edit-connection-finished='editConnectionFinished'
     ref='editConnectionDialog'>
   </NewConnectionDialog>
 </div>
@@ -88,8 +93,9 @@
 
 <script type="text/javascript">
 import storage from '@/storage.js';
-import { remote } from 'electron';
+import electron from '@/electron';
 import NewConnectionDialog from '@/components/NewConnectionDialog';
+import ElementIcon from '@/components/ElementIcon';
 import splitargs from '@qii404/redis-splitargs';
 
 export default {
@@ -99,7 +105,12 @@ export default {
     };
   },
   props: ['config', 'client'],
-  components: { NewConnectionDialog },
+  components: { NewConnectionDialog, ElementIcon },
+  computed: {
+    resolvedConnectionName() {
+      return this.config.connectionName || storage.getConnectionName(this.config);
+    },
+  },
   created() {
     this.$bus.$on('duplicateConnection', (newConfig) => {
       // not self
@@ -115,7 +126,7 @@ export default {
       const { config } = this;
       const sep = '-----------';
       const lines = [
-        config.connectionName,
+        this.resolvedConnectionName,
         sep,
         `${this.$t('message.host')}: ${config.host}`,
         `${this.$t('message.port')}: ${config.port}`,
@@ -156,7 +167,7 @@ export default {
         this.$t('message.close_to_edit_connection'),
         { type: 'warning' },
       ).then(() => {
-        this.$bus.$emit('closeConnection', this.config.connectionName);
+        this.$bus.$emit('closeConnection', this.resolvedConnectionName);
         this.$refs.editConnectionDialog.show();
       }).catch(() => {});
     },
@@ -165,7 +176,7 @@ export default {
         this.$t('message.close_to_connection'),
         { type: 'warning' },
       ).then(() => {
-        this.$bus.$emit('closeConnection', this.config.connectionName);
+        this.$bus.$emit('closeConnection', this.resolvedConnectionName);
       }).catch(() => {});
     },
     editConnectionFinished(newConfig) {
@@ -204,43 +215,36 @@ export default {
     },
     openStatus() {
       if (!this.client) {
-        // open Connections.vue menu
-        this.$parent.$parent.$parent.$refs.connectionMenu.open(this.config.connectionName);
-        // open connection
-        this.$parent.$parent.$parent.openConnection();
-      } else {
-        this.$bus.$emit('openStatus', this.client, this.config.connectionName);
+        this.$emit('open-status');
+        return;
       }
+
+      this.$bus.$emit('openStatus', this.client, this.resolvedConnectionName);
     },
     openCli() {
-      // open cli before connection opened
       if (!this.client) {
-        // open Connections.vue menu
-        this.$parent.$parent.$parent.$refs.connectionMenu.open(this.config.connectionName);
-        // open connection
-        this.$parent.$parent.$parent.openConnection(() => {
-          this.$bus.$emit('openCli', this.client, this.config.connectionName);
-        });
-      } else {
-        this.$bus.$emit('openCli', this.client, this.config.connectionName);
+        this.$emit('open-cli');
+        return;
       }
+
+      this.$bus.$emit('openCli', this.client, this.resolvedConnectionName);
     },
     memoryAnalisys() {
       if (!this.client) {
         return;
       }
 
-      this.$bus.$emit('memoryAnalysis', this.client, this.config.connectionName);
+      this.$bus.$emit('memoryAnalysis', this.client, this.resolvedConnectionName);
     },
     slowLog() {
       if (!this.client) {
         return;
       }
 
-      this.$bus.$emit('slowLog', this.client, this.config.connectionName);
+      this.$bus.$emit('slowLog', this.client, this.resolvedConnectionName);
     },
     importKeys() {
-      remote.dialog.showOpenDialog(remote.getCurrentWindow(), {
+      electron.showOpenDialog({
         properties: ['openFile'],
       }).then((reply) => {
         if (reply.canceled) {
@@ -265,10 +269,12 @@ export default {
           count++;
 
           // show notify in first time
+          const notifyId = `import-keys-progress-${this.resolvedConnectionName}`;
           if (count === 1) {
             this.$notify.success({
-              message: this.$createElement('p', { ref: 'importKeysNotify' }, ''),
+              message: `<p id="${notifyId}">Succ: 0, Fail: 0</p>`,
               duration: 0,
+              dangerouslyUseHTMLString: true,
             });
           }
 
@@ -283,9 +289,10 @@ export default {
           }).catch((e) => {
             fail.push(key);
           }).finally(() => {
-            this.$set(this.$refs.importKeysNotify,
-              'innerHTML',
-              `Succ: ${succ.length}, Fail: ${fail.length}`);
+            const notify = document.getElementById(notifyId);
+            if (notify) {
+              notify.innerHTML = `Succ: ${succ.length}, Fail: ${fail.length}`;
+            }
           });
         });
 
@@ -305,7 +312,7 @@ export default {
       });
     },
     execFileCMDS() {
-      remote.dialog.showOpenDialog(remote.getCurrentWindow(), {
+      electron.showOpenDialog({
         properties: ['openFile'],
       }).then((reply) => {
         if (reply.canceled) {
@@ -330,10 +337,12 @@ export default {
           count++;
 
           // show notify in first time
+          const notifyId = `import-cmd-progress-${this.resolvedConnectionName}`;
           if (count === 1) {
             this.$notify.success({
-              message: this.$createElement('p', { ref: 'importCMDNotify' }, ''),
+              message: `<p id="${notifyId}">Succ: 0, Fail: 0</p>`,
               duration: 0,
+              dangerouslyUseHTMLString: true,
             });
           }
 
@@ -342,10 +351,10 @@ export default {
           }).catch((e) => {
             fail.push(line);
           }).finally(() => {
-            this.$set(this.$refs.importCMDNotify,
-              'innerHTML',
-              `Succ: ${succ.length}, Fail: ${fail.length}`
-            );
+            const notify = document.getElementById(notifyId);
+            if (notify) {
+              notify.innerHTML = `Succ: ${succ.length}, Fail: ${fail.length}`;
+            }
           });
         });
 
@@ -400,10 +409,13 @@ export default {
 
 <style type="text/css">
   .connection-menu-title {
-    margin-left: -20px;
+    position: relative;
+    min-height: 26px;
+    padding: 2px 0 4px;
   }
 
   .connection-menu .connection-name {
+    margin-left: 2px;
     margin-right: 115px;
     padding-right: 6px;
     word-break: keep-all;
@@ -414,12 +426,9 @@ export default {
     font-size: 1.04em;
   }
   .connection-menu .connection-opt-icons {
-    /*width: 30px;*/
-    /*float: right;
-    margin-right: 28px;*/
     position: absolute;
-    right: 25px;
-    top: -2px;
+    right: 8px;
+    top: 0;
   }
   .connection-menu .connection-right-icon {
     display: inline-block;

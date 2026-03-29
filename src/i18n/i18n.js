@@ -1,20 +1,19 @@
-import Vue from 'vue';
-import VueI18n from 'vue-i18n';
-import locale from 'element-ui/lib/locale';
+import { reactive } from 'vue';
+import { createI18n } from 'vue-i18n';
 
-import enLocale from 'element-ui/lib/locale/lang/en';
-import zhLocale from 'element-ui/lib/locale/lang/zh-CN';
-import zhTwLocale from 'element-ui/lib/locale/lang/zh-TW';
-import trTrLocale from 'element-ui/lib/locale/lang/tr-TR';
-import ruLocale from 'element-ui/lib/locale/lang/ru-RU';
-import ptBrLocale from 'element-ui/lib/locale/lang/pt-br';
-import deLocale from 'element-ui/lib/locale/lang/de';
-import frLocale from 'element-ui/lib/locale/lang/fr';
-import uaLocale from 'element-ui/lib/locale/lang/ua';
-import itLocale from 'element-ui/lib/locale/lang/it';
-import esLocale from 'element-ui/lib/locale/lang/es';
-import koLocale from 'element-ui/lib/locale/lang/ko';
-import viLocale from 'element-ui/lib/locale/lang/vi';
+import enLocale from 'element-plus/lib/locale/lang/en';
+import zhLocale from 'element-plus/lib/locale/lang/zh-cn';
+import zhTwLocale from 'element-plus/lib/locale/lang/zh-tw';
+import trTrLocale from 'element-plus/lib/locale/lang/tr';
+import ruLocale from 'element-plus/lib/locale/lang/ru';
+import ptBrLocale from 'element-plus/lib/locale/lang/pt-br';
+import deLocale from 'element-plus/lib/locale/lang/de';
+import frLocale from 'element-plus/lib/locale/lang/fr';
+import uaLocale from 'element-plus/lib/locale/lang/uk';
+import itLocale from 'element-plus/lib/locale/lang/it';
+import esLocale from 'element-plus/lib/locale/lang/es';
+import koLocale from 'element-plus/lib/locale/lang/ko';
+import viLocale from 'element-plus/lib/locale/lang/vi';
 
 import en from './langs/en';
 import cn from './langs/cn';
@@ -30,68 +29,57 @@ import es from './langs/es';
 import ko from './langs/ko';
 import vi from './langs/vi';
 
-Vue.use(VueI18n);
+export const localeState = reactive({
+  value: localStorage.lang || 'en',
+});
 
-const messages = {
-  en: {
-    ...en,
-    ...enLocale,
-  },
-  cn: {
-    ...cn,
-    ...zhLocale,
-  },
-  tw: {
-    ...tw,
-    ...zhTwLocale,
-  },
-  tr: {
-    ...tr,
-    ...trTrLocale,
-  },
-  ru: {
-    ...ru,
-    ...ruLocale,
-  },
-  pt: {
-    ...pt,
-    ...ptBrLocale,
-  },
-  de: {
-    ...de,
-    ...deLocale,
-  },
-  fr: {
-    ...fr,
-    ...frLocale,
-  },
-  ua: {
-    ...ua,
-    ...uaLocale,
-  },
-  it: {
-    ...it,
-    ...itLocale,
-  },
-  es: {
-    ...es,
-    ...esLocale,
-  },
-  ko: {
-    ...ko,
-    ...koLocale,
-  },
-  vi: {
-    ...vi,
-    ...viLocale,
-  },
+export const elementLocaleMap = {
+  en: enLocale,
+  cn: zhLocale,
+  tw: zhTwLocale,
+  tr: trTrLocale,
+  ru: ruLocale,
+  pt: ptBrLocale,
+  de: deLocale,
+  fr: frLocale,
+  ua: uaLocale,
+  it: itLocale,
+  es: esLocale,
+  ko: koLocale,
+  vi: viLocale,
 };
 
-const i18n = new VueI18n({
-  locale: localStorage.lang || 'en',
+const messages = {
+  en: { ...en, el: enLocale.el },
+  cn: { ...cn, el: zhLocale.el },
+  tw: { ...tw, el: zhTwLocale.el },
+  tr: { ...tr, el: trTrLocale.el },
+  ru: { ...ru, el: ruLocale.el },
+  pt: { ...pt, el: ptBrLocale.el },
+  de: { ...de, el: deLocale.el },
+  fr: { ...fr, el: frLocale.el },
+  ua: { ...ua, el: uaLocale.el },
+  it: { ...it, el: itLocale.el },
+  es: { ...es, el: esLocale.el },
+  ko: { ...ko, el: koLocale.el },
+  vi: { ...vi, el: viLocale.el },
+};
+
+const i18n = createI18n({
+  legacy: true,
+  globalInjection: true,
+  locale: localeState.value,
+  fallbackLocale: 'en',
   messages,
 });
 
-locale.i18n((key, value) => i18n.t(key, value));
+export function getElementLocale(lang = localeState.value) {
+  return elementLocaleMap[lang] || elementLocaleMap.en;
+}
+
+export function setLocale(lang) {
+  localeState.value = lang;
+  i18n.global.locale = lang;
+}
 
 export default i18n;

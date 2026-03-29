@@ -2,20 +2,22 @@
 <div>
   <el-card class="box-card del-batch-card">
     <!-- card title -->
-    <div slot="header" class="clearfix">
-      <span class="del-title"><i class="fa fa-exclamation-triangle"></i> {{ $t('message.keys_to_be_deleted') }}</span>
-      <i v-if="loadingScan||loadingDelete" class='el-icon-loading'></i>
-      <el-tag size="mini">
-        <span v-if="loadingScan">Scanning... </span>
-        <span v-if="loadingDelete">Deleting... </span>
-        Total: {{ allKeysList.length }}
-      </el-tag>
+    <template #header>
+      <div class="clearfix">
+        <span class="del-title"><i class="fa fa-exclamation-triangle"></i> {{ $t('message.keys_to_be_deleted') }}</span>
+        <ElementIcon v-if="loadingScan||loadingDelete" name="el-icon-loading" spin></ElementIcon>
+        <el-tag size="mini">
+          <span v-if="loadingScan">Scanning... </span>
+          <span v-if="loadingDelete">Deleting... </span>
+          Total: {{ allKeysList.length }}
+        </el-tag>
 
-      <!-- del btn -->
-      <el-button @click="confirmDelete" :disabled="loadingScan||loadingDelete||allKeysList.length == 0" style="float: right;" type="danger">{{ $t('message.delete_all') }}</el-button>
-      <!-- toggle scanning btn -->
-      <el-button v-if="rule.pattern.length && !scanningEnd" @click="toggleScanning()" type="text" style="float: right;">{{loadingScan ? $t('message.pause') : $t('message.begin')}}&nbsp;</el-button>
-    </div>
+        <!-- del btn -->
+        <el-button @click="confirmDelete" :disabled="loadingScan||loadingDelete||allKeysList.length == 0" style="float: right;" type="danger">{{ $t('message.delete_all') }}</el-button>
+        <!-- toggle scanning btn -->
+        <el-button v-if="rule.pattern.length && !scanningEnd" @click="toggleScanning()" type="text" style="float: right;">{{loadingScan ? $t('message.pause') : $t('message.begin')}}&nbsp;</el-button>
+      </div>
+    </template>
 
     <!-- scan pattern -->
     <el-tag v-if="rule.pattern && rule.pattern.length" size="mini" style="margin-left: 10px;">
@@ -41,6 +43,7 @@
 
 <script type="text/javascript">
 import { RecycleScroller } from 'vue-virtual-scroller';
+import ElementIcon from '@/components/ElementIcon';
 
 export default {
   data() {
@@ -53,7 +56,7 @@ export default {
     };
   },
   props: ['client', 'rule', 'hotKeyScope'],
-  components: { RecycleScroller },
+  components: { RecycleScroller, ElementIcon },
   methods: {
     initKeys() {
       this.allKeysList = [];
@@ -215,7 +218,7 @@ export default {
     // disable f5 for streams on event cannot stop
     // this.initShortcut();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     // this.$shortcut.deleteScope(this.hotKeyScope);
     // cancel scanning
     this.toggleScanning(true);

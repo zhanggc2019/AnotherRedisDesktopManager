@@ -1,5 +1,11 @@
 <template>
-  <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" :append-to-body='true' :close-on-click-modal='false' class='new-connection-dailog' width='90%'>
+  <el-dialog
+    :title="dialogTitle"
+    v-model="dialogVisible"
+    :append-to-body='true'
+    :close-on-click-modal='false'
+    class='new-connection-dailog'
+    width='90%'>
     <!-- redis connection form -->
     <el-form :label-position="labelPosition" label-width="90px">
       <el-row :gutter=20>
@@ -30,7 +36,9 @@
 
           <el-form-item :label="$t('message.separator')">
             <el-tooltip effect="dark">
-              <div slot="content">{{ $t('message.separator_tip') }}</div>
+              <template #content>
+                <div>{{ $t('message.separator_tip') }}</div>
+              </template>
               <el-input v-model="connection.separator" autocomplete="off" placeholder='Empty To Disable Tree View'></el-input>
             </el-tooltip>
           </el-form-item>
@@ -44,21 +52,27 @@
         <el-checkbox v-model="sentinelOptionsShow">
           Sentinel
           <el-popover trigger="hover">
-            <i slot="reference" class="el-icon-question"></i>
+            <template #reference>
+              <ElementIcon name="el-icon-question"></ElementIcon>
+            </template>
             {{ $t('message.sentinel_faq') }}
           </el-popover>
         </el-checkbox>
         <el-checkbox v-model="connection.cluster">
           Cluster
           <el-popover trigger="hover">
-            <i slot="reference" class="el-icon-question"></i>
+            <template #reference>
+              <ElementIcon name="el-icon-question"></ElementIcon>
+            </template>
             {{ $t('message.cluster_faq') }}
           </el-popover>
         </el-checkbox>
         <el-checkbox v-model="connection.connectionReadOnly">
           Readonly
           <el-popover trigger="hover">
-            <i slot="reference" class="el-icon-question"></i>
+            <template #reference>
+              <ElementIcon name="el-icon-question"></ElementIcon>
+            </template>
             {{ $t('message.connection_readonly') }}
           </el-popover>
         </el-checkbox>
@@ -84,8 +98,10 @@
 
           <el-form-item :label="$t('message.private_key')">
             <FileInput
-              :file.sync='connection.sshOptions.privatekey'
-              :bookmark.sync='connection.sshOptions.privatekeybookmark'
+              :file='connection.sshOptions.privatekey'
+              :bookmark='connection.sshOptions.privatekeybookmark'
+              @update:file="connection.sshOptions.privatekey = $event"
+              @update:bookmark="connection.sshOptions.privatekeybookmark = $event"
               placeholder='SSH Private Key'>
             </FileInput>
           </el-form-item>
@@ -123,18 +139,22 @@
         <el-col :span=12>
           <el-form-item :label="$t('message.private_key')">
             <FileInput
-              :file.sync='connection.sslOptions.key'
-              :bookmark.sync='connection.sslOptions.keybookmark'
+              :file='connection.sslOptions.key'
+              :bookmark='connection.sslOptions.keybookmark'
+              @update:file="connection.sslOptions.key = $event"
+              @update:bookmark="connection.sslOptions.keybookmark = $event"
               placeholder='SSL Private Key Pem (key)'>
-              </FileInput>
+            </FileInput>
           </el-form-item>
 
           <el-form-item :label="$t('message.authority')">
             <FileInput
-              :file.sync='connection.sslOptions.ca'
-              :bookmark.sync='connection.sslOptions.cabookmark'
+              :file='connection.sslOptions.ca'
+              :bookmark='connection.sslOptions.cabookmark'
+              @update:file="connection.sslOptions.ca = $event"
+              @update:bookmark="connection.sslOptions.cabookmark = $event"
               placeholder='SSL Certificate Authority (CA)'>
-              </FileInput>
+            </FileInput>
           </el-form-item>
         </el-col>
 
@@ -142,10 +162,12 @@
         <el-col :span=12>
           <el-form-item :label="$t('message.public_key')">
             <FileInput
-              :file.sync='connection.sslOptions.cert'
-              :bookmark.sync='connection.sslOptions.certbookmark'
+              :file='connection.sslOptions.cert'
+              :bookmark='connection.sslOptions.certbookmark'
+              @update:file="connection.sslOptions.cert = $event"
+              @update:bookmark="connection.sslOptions.certbookmark = $event"
               placeholder='SSL Public Key Pem (cert)'>
-              </FileInput>
+            </FileInput>
           </el-form-item>
 
           <!-- SNI -->
@@ -179,10 +201,12 @@
       </el-row>
     </el-form>
 
-    <div slot="footer" class="dialog-footer">
-      <el-button @click="dialogVisible = false">{{ $t('el.messagebox.cancel') }}</el-button>
-      <el-button type="primary" @click="editConnection">{{ $t('el.messagebox.confirm') }}</el-button>
-    </div>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="dialogVisible = false">{{ $t('el.messagebox.cancel') }}</el-button>
+        <el-button type="primary" @click="editConnection">{{ $t('el.messagebox.confirm') }}</el-button>
+      </div>
+    </template>
   </el-dialog>
 </template>
 
@@ -190,6 +214,7 @@
 import storage from '@/storage';
 import FileInput from '@/components/FileInput';
 import InputPassword from '@/components/InputPassword';
+import ElementIcon from '@/components/ElementIcon';
 
 export default {
   data() {
@@ -232,7 +257,7 @@ export default {
       sentinelOptionsShow: false,
     };
   },
-  components: { FileInput, InputPassword },
+  components: { FileInput, InputPassword, ElementIcon },
   props: {
     config: {
       default: _ => new Array(),
@@ -294,9 +319,10 @@ export default {
 
       const oldKey = storage.getConnectionKey(this.config);
       storage.editConnectionByKey(config, oldKey);
+      config.connectionName = storage.getConnectionName(config);
 
       this.dialogVisible = false;
-      this.$emit('editConnectionFinished', config);
+      this.$emit('edit-connection-finished', config);
     },
   },
   mounted() {

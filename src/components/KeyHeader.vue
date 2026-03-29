@@ -6,15 +6,18 @@
         ref="keyNameInput"
         :value="$util.bufToString(keyName)"
         @change='changeKeyInput'
-        @keyup.enter.native="renameKey"
+        @keyup.enter="renameKey"
         :title="$t('message.click_enter_to_rename')"
         placeholder="KeyName">
-        <span slot="prepend" class="key-detail-type">{{ keyType }}</span>
-        <i class="fa fa-check el-input__icon cursor-pointer"
-          slot="suffix"
-          :title="$t('message.click_enter_to_rename')"
-          @click="renameKey">
-        </i>
+        <template #prepend>
+          <span class="key-detail-type">{{ keyType }}</span>
+        </template>
+        <template #suffix>
+          <i class="fa fa-check el-input__icon cursor-pointer"
+            :title="$t('message.click_enter_to_rename')"
+            @click="renameKey">
+          </i>
+        </template>
       </el-input>
     </div>
 
@@ -23,28 +26,30 @@
       <el-input
         type="number"
         v-model="keyTTL"
-        @keyup.enter.native="ttlKey"
+        @keyup.enter="ttlKey"
         :title="$util.leftTime(keyTTL)">
-        <span slot="prepend">TTL</span>
-        <!-- remove expire -->
-        <i class="fa fa-history el-input__icon cursor-pointer"
-          slot="suffix"
-          :title="$t('message.persist')+', -1'"
-          @click="persistKey">
-        </i>
-        <!-- save ttl -->
-        <i class="fa fa-check el-input__icon cursor-pointer"
-          slot="suffix"
-          :title="$t('message.click_enter_to_ttl')"
-          @click="ttlKey">
-        </i>
+        <template #prepend>
+          <span>TTL</span>
+        </template>
+        <template #suffix>
+          <!-- remove expire -->
+          <i class="fa fa-history el-input__icon cursor-pointer"
+            :title="$t('message.persist')+', -1'"
+            @click="persistKey">
+          </i>
+          <!-- save ttl -->
+          <i class="fa fa-check el-input__icon cursor-pointer"
+            :title="$t('message.click_enter_to_ttl')"
+            @click="ttlKey">
+          </i>
+        </template>
       </el-input>
     </div>
 
     <!-- del & refresh btn -->
     <div class='key-header-item key-header-btn-con'>
       <!-- del btn -->
-      <el-button ref='deleteBtn' type="danger" @click="deleteKey" icon="el-icon-delete" :title="$t('el.upload.delete')+' Ctrl+d'"></el-button>
+      <el-button ref='deleteBtn' type="danger" @click="deleteKey" :icon="resolveElIcon('el-icon-delete')" :title="$t('el.upload.delete')+' Ctrl+d'"></el-button>
       <!-- refresh btn -->
       <!-- <el-button ref='refreshBtn' type="success" @click="refreshKey" icon="el-icon-refresh" :title="$t('message.refresh_connection')+' Ctrl+r / F5'"></el-button> -->
 
@@ -54,7 +59,7 @@
         :open-delay="500"
         trigger="hover">
         <el-tag type="info">
-          <i class="el-icon-refresh"></i>
+          <ElementIcon name="el-icon-refresh"></ElementIcon>
           {{ $t('message.auto_refresh') }}
         </el-tag>
 
@@ -63,7 +68,9 @@
         </el-tooltip>
 
         <!-- refresh btn -->
-        <el-button slot="reference" ref='refreshBtn' type="success" @click="refreshKey" icon="el-icon-refresh" :title="$t('message.refresh_connection')+' Ctrl+r / F5'" :class="autoRefresh?'rotating':''"></el-button>
+        <template #reference>
+          <el-button ref='refreshBtn' type="success" @click="refreshKey" :icon="resolveElIcon('el-icon-refresh')" :title="$t('message.refresh_connection')+' Ctrl+r / F5'" :class="autoRefresh?'rotating':''"></el-button>
+        </template>
       </el-popover>
 
       <!-- dump btn -->
@@ -73,6 +80,9 @@
 </template>
 
 <script>
+import ElementIcon from '@/components/ElementIcon';
+import { resolveElIcon } from '@/element-plus-icons';
+
 export default {
   data() {
     return {
@@ -84,7 +94,9 @@ export default {
     };
   },
   props: ['client', 'redisKey', 'keyType', 'hotKeyScope'],
+  components: { ElementIcon },
   methods: {
+    resolveElIcon,
     initShow() {
       const key = this.redisKey;
       const { client } = this;
@@ -167,7 +179,7 @@ export default {
         }), {
           inputValidator: value => ((value == inputTxt) ? true : placeholder),
           inputPlaceholder: placeholder,
-        }
+        },
       ).then(() => {
         this.client.rename(this.redisKey, this.keyName).then((reply) => {
           if (reply === 'OK') {
@@ -253,7 +265,7 @@ export default {
     this.initShow();
     this.initShortcut();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     clearInterval(this.refreshTimer);
     this.$shortcut.deleteScope(this.hotKeyScope);
   },
@@ -300,7 +312,7 @@ export default {
   }
 
   /*refresh btn rotating*/
-  .key-header-info .key-header-btn-con .rotating .el-icon-refresh{
+  .key-header-info .key-header-btn-con .rotating .el-icon{
     animation: rotate 1.5s linear infinite;
   }
 

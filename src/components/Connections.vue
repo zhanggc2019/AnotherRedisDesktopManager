@@ -4,7 +4,7 @@
     <div v-if="connections.length>=filterEnableNum" class="filter-input">
       <el-input
         v-model="filterMode"
-        suffix-icon="el-icon-search"
+        :suffix-icon="resolveElIcon('el-icon-search')"
         :placeholder="$t('message.search_connection')"
         clearable
         size="mini">
@@ -31,6 +31,7 @@ import storage from '@/storage.js';
 import ConnectionWrapper from '@/components/ConnectionWrapper';
 import ScrollToTop from '@/components/ScrollToTop';
 import Sortable from 'sortablejs';
+import { resolveElIcon } from '@/element-plus-icons';
 
 
 export default {
@@ -57,12 +58,11 @@ export default {
         return this.connections;
       }
 
-      return this.connections.filter(item => {
-        return item.name.toLowerCase().includes(this.filterMode.toLowerCase());
-      });
+      return this.connections.filter(item => item.name.toLowerCase().includes(this.filterMode.toLowerCase()));
     },
   },
   methods: {
+    resolveElIcon,
     initConnections() {
       const connections = storage.getConnections(true);
       const slovedConnections = [];
@@ -80,7 +80,7 @@ export default {
     sortOrder() {
       const dragWrapper = document.querySelector('.connections-list');
       Sortable.create(dragWrapper, {
-        handle: '.el-submenu__title',
+        handle: '.connection-menu-header',
         animation: 400,
         direction: 'vertical',
         onEnd: (e) => {

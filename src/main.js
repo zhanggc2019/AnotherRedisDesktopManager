@@ -1,6 +1,8 @@
-import Vue from 'vue';
-import ElementUI from 'element-ui';
+import { createApp } from 'vue';
+import ElementPlus, { ElMessage, ElMessageBox, ElNotification } from 'element-plus';
+import 'element-plus/dist/index.css';
 import 'font-awesome/css/font-awesome.css';
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import App from './App';
 import i18n from './i18n/i18n';
 import bus from './bus';
@@ -8,26 +10,45 @@ import util from './util';
 import storage from './storage';
 import shortcut from './shortcut';
 
-// vxe-table
-// import VxeUITable from 'vxe-table';
 import 'vxe-table/lib/style.css';
-// Vue.use(VxeUITable);
+const app = createApp(App);
 
-Vue.prototype.$bus = bus;
-Vue.prototype.$util = util;
-Vue.prototype.$storage = storage;
-Vue.prototype.$shortcut = shortcut;
+app.config.errorHandler = (err, instance, info) => {
+  const componentName = instance && instance.$ && instance.$.type
+    ? (instance.$.type.name || instance.$.type.__name || 'anonymous')
+    : 'unknown';
+  const payload = {
+    componentName,
+    info,
+    message: err && err.message ? err.message : String(err),
+    stack: err && err.stack ? err.stack : '',
+  };
+  window.__lastVueError = payload;
+  console.error('[vue-error]', JSON.stringify(payload));
+};
 
-Vue.use(ElementUI, { size: 'small' });
-Vue.config.productionTip = false;
-
-/* eslint-disable no-new */
-const vue = new Vue({
-  el: '#app',
-  i18n,
-  components: { App },
-  template: '<App/>',
+window.addEventListener('error', (event) => {
+  console.error('[window-error]', event.error || event.message);
 });
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[unhandledrejection]', event.reason);
+});
+
+app.config.globalProperties.$bus = bus;
+app.config.globalProperties.$util = util;
+app.config.globalProperties.$storage = storage;
+app.config.globalProperties.$shortcut = shortcut;
+app.config.globalProperties.$message = ElMessage;
+app.config.globalProperties.$notify = ElNotification;
+app.config.globalProperties.$confirm = ElMessageBox.confirm;
+app.config.globalProperties.$prompt = ElMessageBox.prompt;
+app.config.globalProperties.$alert = ElMessageBox.alert;
+
+app.use(i18n);
+app.use(ElementPlus, { size: 'small' });
+
+const vue = app.mount('#app');
 
 // handle uncaught exception
 process.on('uncaughtException', (err, origin) => {

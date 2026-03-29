@@ -1,12 +1,14 @@
 <template>
   <transition name="bounce">
     <div class="to-top-container" :style='style' @click="scrollToTop" v-if="toTopShow">
-      <i class="el-icon-to-top el-icon-arrow-up"></i>
+      <ElementIcon name="el-icon-to-top"></ElementIcon>
     </div>
   </transition>
 </template>
 
 <script type="text/javascript">
+import ElementIcon from '@/components/ElementIcon';
+
 export default {
   data() {
     return {
@@ -31,6 +33,7 @@ export default {
     parentNum: { default: 3 },
     posRight: { default: true },
   },
+  components: { ElementIcon },
   methods: {
     handleScroll() {
       this.scrollTop = this.realDom.scrollTop;
@@ -79,8 +82,8 @@ export default {
       this.realDom.addEventListener('scroll', this.handleScroll, true);
     });
   },
-  destroyed() {
-    this.realDom.removeEventListener('scroll', this.handleScroll, true);
+  unmounted() {
+    this.realDom && this.realDom.removeEventListener('scroll', this.handleScroll, true);
   },
 };
 </script>
@@ -103,7 +106,7 @@ export default {
   .to-top-container:hover{
     opacity: 1;
   }
-  .to-top-container .el-icon-to-top{
+  .to-top-container .el-icon{
     color: #fff;
     display: block;
     line-height: 40px;

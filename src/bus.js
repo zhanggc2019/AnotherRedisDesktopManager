@@ -1,18 +1,23 @@
-import Vue from 'vue';
+import mitt from 'mitt';
 
-const eventHub = new Vue();
+const emitter = mitt();
 
 export default {
-  $on(...event) {
-    eventHub.$on(...event);
+  $on(event, handler) {
+    emitter.on(event, handler);
   },
-  $off(...event) {
-    eventHub.$off(...event);
+  $off(event, handler) {
+    emitter.off(event, handler);
   },
-  $once(...event) {
-    eventHub.$once(...event);
+  $once(event, handler) {
+    const wrapped = (...args) => {
+      emitter.off(event, wrapped);
+      handler(...args);
+    };
+
+    emitter.on(event, wrapped);
   },
-  $emit(...event) {
-    eventHub.$emit(...event);
+  $emit(event, ...args) {
+    emitter.emit(event, ...args);
   },
 };

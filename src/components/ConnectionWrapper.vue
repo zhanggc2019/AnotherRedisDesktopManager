@@ -1,37 +1,35 @@
 <template>
-  <el-menu
+  <div
     ref="connectionMenu"
-    :collapse-transition='false'
     :id="connectionAnchor"
-    @open="openConnection()"
     class="connection-menu"
-    active-text-color="#ffd04b">
-    <el-submenu :index="config.connectionName">
-      <!-- connection menu -->
+    :class="{ 'menu-with-custom-color': !!config.color, 'is-opened': expanded }">
+    <div class="connection-menu-header" @click="handleHeaderClick">
       <ConnectionMenu
-        slot="title"
         :config="config"
         :client='client'
         @changeColor='setColor'
-        @refreshConnection='openConnection(false, true)'>
+        @refreshConnection='openConnection(false, true)'
+        @open-status="openStatusFromMenu"
+        @open-cli="openCliFromMenu">
       </ConnectionMenu>
+    </div>
 
-      <!-- db search operate -->
+    <div v-show="expanded" class="connection-menu-body">
       <OperateItem
         ref='operateItem'
         :config="config"
         :client='client'>
       </OperateItem>
 
-      <!-- key list -->
       <KeyList
         ref='keyList'
         :config="config"
         :globalSettings='globalSettings'
         :client='client'>
       </KeyList>
-    </el-submenu>
-  </el-menu>
+    </div>
+  </div>
 </template>
 
 <script type="text/javascript">
@@ -41,9 +39,15 @@ import OperateItem from '@/components/OperateItem';
 import ConnectionMenu from '@/components/ConnectionMenu';
 
 export default {
+  provide() {
+    return {
+      connectionWrapper: this,
+    };
+  },
   data() {
     return {
       client: null,
+      expanded: false,
       pingTimer: null,
       pingInterval: 10000, // ms
       lastSelectedDb: 0,
@@ -57,24 +61,37 @@ export default {
     });
     // open connection
     this.$bus.$on('openConnection', (connectionName) => {
-      if (connectionName && (connectionName == this.config.connectionName)) {
+      if (connectionName && (connectionName == this.resolvedConnectionName)) {
+        this.expandPanel();
         this.openConnection();
-        this.$refs.connectionMenu.open(this.config.connectionName);
       }
     });
   },
   computed: {
+    resolvedConnectionName() {
+      return this.config.connectionName || this.$storage.getConnectionName(this.config);
+    },
     connectionAnchor() {
-      return `connection-anchor-${this.config.connectionName}`;
+      return `connection-anchor-${this.resolvedConnectionName}`;
     },
   },
   methods: {
+    expandPanel() {
+      this.expanded = true;
+    },
+    collapsePanel() {
+      this.expanded = false;
+    },
+    handleHeaderClick() {
+      this.expandPanel();
+      this.openConnection();
+    },
     initShow() {
       this.$refs.operateItem.initShow();
       this.$refs.keyList.initShow();
     },
     initLastSelectedDb() {
-      const db = parseInt(localStorage.getItem(`lastSelectedDb_${this.config.connectionName}`));
+      const db = parseInt(localStorage.getItem(`lastSelectedDb_${this.resolvedConnectionName}`));
 
       if (db > 0 && this.lastSelectedDb != db) {
         this.lastSelectedDb = db;
@@ -82,6 +99,7 @@ export default {
       }
     },
     openConnection(callback = false, forceOpen = false) {
+      this.expandPanel();
       // scroll to connection
       this.scrollToConnection();
       // recovery last selected db
@@ -112,7 +130,7 @@ export default {
 
           client.readyInited = true;
           // open status tab
-          this.$bus.$emit('openStatus', client, this.config.connectionName);
+          this.$bus.$emit('openStatus', client, this.resolvedConnectionName);
           this.startPingInterval();
 
           this.initShow();
@@ -128,12 +146,11 @@ export default {
     },
     closeConnection(connectionName) {
       // if connectionName is not passed, close all connections
-      if (connectionName && (connectionName != this.config.connectionName)) {
+      if (connectionName && (connectionName != this.resolvedConnectionName)) {
         return;
       }
 
-      this.$refs.connectionMenu
-      && this.$refs.connectionMenu.close(this.config.connectionName);
+      this.collapsePanel();
       this.$bus.$emit('removeAllTab', connectionName);
 
       // clear ping interval
@@ -193,25 +210,37 @@ export default {
       return clientPromise;
     },
     setColor(color, save = true) {
-      const ulDom = this.$refs.connectionMenu.$el;
+      const menuDom = this.$refs.connectionMenu;
       const className = 'menu-with-custom-color';
 
       // save to setting
       save && this.$storage.editConnectionItem(this.config, { color });
 
       if (!color) {
-        ulDom.classList.remove(className);
+        menuDom.classList.remove(className);
+        this.$el.style.removeProperty('--menu-color');
       } else {
-        ulDom.classList.add(className);
+        menuDom.classList.add(className);
         this.$el.style.setProperty('--menu-color', color);
       }
     },
+    openStatusFromMenu() {
+      this.expandPanel();
+      this.openConnection(() => {
+        this.$bus.$emit('openStatus', this.client, this.resolvedConnectionName);
+      });
+    },
+    openCliFromMenu() {
+      this.expandPanel();
+      this.openConnection(() => {
+        this.$bus.$emit('openCli', this.client, this.resolvedConnectionName);
+      });
+    },
     scrollToConnection() {
       this.$nextTick(() => {
-        // 300ms after menu expand animination
         setTimeout(() => {
           let scrollTop = 0;
-          const menus = document.querySelectorAll('.connections-wrap .connections-list>ul');
+          const menus = document.querySelectorAll('.connections-wrap .connection-menu');
 
           // calc height sum of all above menus
           for (const menu of menus) {
@@ -235,24 +264,33 @@ export default {
   mounted() {
     this.setColor(this.config.color, false);
   },
-  beforeDestroy() {
-    this.closeConnection(this.config.connectionName);
+  beforeUnmount() {
+    this.closeConnection(this.resolvedConnectionName);
   },
 };
 </script>
 
 <style type="text/css">
-  /*menu ul*/
   .connection-menu {
     margin-bottom: 8px;
     padding-right: 6px;
     border-right: 0;
+    border-left: 1px solid #ebeef5;
   }
 
-  .connection-menu.menu-with-custom-color li.el-submenu {
+  .connection-menu.menu-with-custom-color {
     border-left: 5px solid var(--menu-color);
     border-radius: 4px 0 0 4px;
     padding-left: 3px;
+  }
+
+  .connection-menu-header {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .connection-menu-body {
+    padding-top: 6px;
   }
 
   /*this error shows first*/

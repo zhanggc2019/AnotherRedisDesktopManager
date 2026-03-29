@@ -8,10 +8,21 @@ function resolve (dir) {
   return path.join(__dirname, '..', dir)
 }
 
+const isProd = process.env.NODE_ENV === 'production'
 
+const transpileDependencies = [
+  resolve('src'),
+  resolve('test'),
+  resolve('node_modules/pickleparser'),
+  resolve('node_modules/element-plus'),
+  resolve('node_modules/vue-virtual-scroller'),
+  resolve('node_modules/@ctrl'),
+  resolve('node_modules/@vueuse'),
+  resolve('node_modules/lodash-unified')
+]
 
 module.exports = {
-  mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+  mode: isProd ? 'production' : 'development',
   context: path.resolve(__dirname, '../'),
   entry: {
     app: './src/main.js'
@@ -19,15 +30,23 @@ module.exports = {
   output: {
     path: config.build.assetsRoot,
     filename: '[name].js',
-    publicPath: process.env.NODE_ENV === 'production'
+    publicPath: isProd
       ? config.build.assetsPublicPath
       : config.dev.assetsPublicPath
   },
   target: 'electron-renderer',
   resolve: {
-    extensions: ['.js', '.vue', '.json'],
+    extensions: ['.mjs', '.js', '.vue', '.json'],
     alias: {
-      'vue$': 'vue/dist/vue.esm.js',
+      'vue$': 'vue/dist/vue.esm-bundler.js',
+      'element-plus$': 'element-plus/lib/index.js',
+      'vue-i18n$': isProd
+        ? 'vue-i18n/dist/vue-i18n.esm-browser.prod.js'
+        : 'vue-i18n/dist/vue-i18n.esm-browser.js',
+      '@ctrl/tinycolor$': '@ctrl/tinycolor/dist/public_api.js',
+      'lodash-unified$': 'lodash-unified/require.cjs',
+      '@vueuse/core$': '@vueuse/core/index.cjs',
+      '@vueuse/shared$': '@vueuse/shared/index.cjs',
       '@': resolve('src'),
     }
   },
@@ -39,7 +58,7 @@ module.exports = {
         options: {
           // map sourceMap
           name(resourcePath, resourceQuery) {
-            if (process.env.NODE_ENV === "development") {
+            if (!isProd) {
               return "[path][name].[ext]";
             }
 
@@ -57,14 +76,14 @@ module.exports = {
         // ],
       },
       {
-        test: /\.js$/,
+        test: /\.mjs$/,
+        include: /node_modules/,
+        type: 'javascript/auto'
+      },
+      {
+        test: /\.m?js$/,
         loader: 'babel-loader',
-        include: [
-          // resolve('src'),
-          // resolve('test'),
-          // resolve('node_modules/webpack-dev-server/client'),
-          resolve('node_modules/pickleparser')
-        ]
+        include: transpileDependencies
       },
       {
         test: /\.(png|jpe?g|gif|svg)(\?.*)?$/,

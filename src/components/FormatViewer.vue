@@ -1,7 +1,9 @@
 <template>
   <div class="format-viewer-container">
     <el-select v-model="selectedView" :disabled='overSize' class='format-selector' :style='selectStyle' size='mini' placeholder='Text'>
-      <span slot="prefix" class="fa fa-sitemap"></span>
+      <template #prefix>
+        <span class="fa fa-sitemap"></span>
+      </template>
       <el-option
         v-for="item of viewers"
         :key="item.text"
@@ -10,15 +12,15 @@
       </el-option>
       <!-- add custom -->
       <el-option
-        @click.native.stop.prevent='addCustomFormatter'
+        :label="$t('message.custom')"
         value='addCustomFormatter'>
-        <el-button type='text' icon="el-icon-edit-outline">{{$t('message.custom')}}</el-button>
+        <span><ElementIcon name="el-icon-edit-outline"></ElementIcon> {{$t('message.custom')}}</span>
       </el-option>
     </el-select>
     <el-tag v-if='!contentVisible' size="mini" class='formater-binary-tag' :disable-transitions='true'>[Hex]</el-tag>
     <el-tag class='formater-binary-tag' size="mini" :disable-transitions='true'>Size: {{ $util.humanFileSize(buffSize) }}</el-tag>
     <el-button  @click='copyContent' :title='$t("message.copy")' type='text' size='mini'>
-      <i class="el-icon-document"></i>{{$t("message.copy")}}
+      <ElementIcon name="el-icon-document"></ElementIcon>{{$t("message.copy")}}
     </el-button>
     <br>
 
@@ -52,6 +54,7 @@ import ViewerProtobuf from '@/components/viewers/ViewerProtobuf';
 import ViewerDeflateRaw from '@/components/viewers/ViewerDeflateRaw';
 import ViewerJavaSerialize from '@/components/viewers/ViewerJavaSerialize';
 import ViewerPickle from '@/components/viewers/ViewerPickle';
+import ElementIcon from '@/components/ElementIcon';
 
 export default {
   data() {
@@ -96,6 +99,7 @@ export default {
     ViewerDeflateRaw,
     ViewerJavaSerialize,
     ViewerPickle,
+    ElementIcon,
   },
   props: {
     float: { default: 'right' },
@@ -145,7 +149,13 @@ export default {
       this.autoFormat();
       this.autoFormated = true;
     },
-    selectedView(viewer) {
+    selectedView(viewer, previousViewer) {
+      if (viewer === 'addCustomFormatter') {
+        this.selectedView = previousViewer || 'Text';
+        this.addCustomFormatter();
+        return;
+      }
+
       // custom viewer com may same, force change
       this.viewerComponent = '';
       this.$nextTick(() => {

@@ -6,17 +6,23 @@
       <el-button type="primary" @click="showEditDialog({})">{{ $t('message.add_new_line') }}</el-button>
 
       <!-- edit & add dialog -->
-      <el-dialog :title="dialogTitle" :visible.sync="editDialog" @open="openDialog" :close-on-click-modal="false">
+      <el-dialog
+        :title="dialogTitle"
+        v-model="editDialog"
+        :close-on-click-modal="false"
+        @open="openDialog">
         <el-form>
           <el-form-item label="Value">
             <FormatViewer ref="formatViewer" :redisKey="redisKey" :dataMap="editLineItem" :content="editLineItem.value"></FormatViewer>
           </el-form-item>
         </el-form>
 
-        <div slot="footer" class="dialog-footer">
-          <el-button @click="editDialog = false">{{ $t('el.messagebox.cancel') }}</el-button>
-          <el-button type="primary" @click="editLine">{{ $t('el.messagebox.confirm') }}</el-button>
-        </div>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button @click="editDialog = false">{{ $t('el.messagebox.cancel') }}</el-button>
+            <el-button type="primary" @click="editLine">{{ $t('el.messagebox.confirm') }}</el-button>
+          </div>
+        </template>
       </el-dialog>
     </div>
 
@@ -33,23 +39,23 @@
         :data="listData">
         <vxe-column type="seq" :title="'ID (Total: ' + total + ')'" width="150"></vxe-column>
         <vxe-column field="value" title="Value" sortable>
-          <template v-slot="scope">
+          <template #default="scope">
             {{ $util.cutString($util.bufToString(scope.row.value), 100) }}
           </template>
         </vxe-column>
         <vxe-column title="Operate" width="166">
-          <template slot-scope="scope" slot="header">
+          <template #header>
             <el-input size="mini"
               :placeholder="$t('message.key_to_search')"
-              :suffix-icon="loadingIcon"
-              @keyup.native.enter='initShow()'
+              :suffix-icon="resolveElIcon(loadingIcon)"
+              @keyup.enter='initShow()'
               v-model="filterValue">
             </el-input>
           </template>
-          <template slot-scope="scope">
-            <el-button type="text" @click="$util.copyToClipboard(scope.row.value)" icon="el-icon-document" :title="$t('message.copy')"></el-button>
-            <el-button type="text" @click="showEditDialog(scope.row)" icon="el-icon-edit" :title="$t('message.edit_line')"></el-button>
-            <el-button type="text" @click="deleteLine(scope.row)" icon="el-icon-delete" :title="$t('el.upload.delete')"></el-button>
+          <template #default="scope">
+            <el-button type="text" @click="$util.copyToClipboard(scope.row.value)" :icon="resolveElIcon('el-icon-document')" :title="$t('message.copy')"></el-button>
+            <el-button type="text" @click="showEditDialog(scope.row)" :icon="resolveElIcon('el-icon-edit')" :title="$t('message.edit_line')"></el-button>
+            <el-button type="text" @click="deleteLine(scope.row)" :icon="resolveElIcon('el-icon-delete')" :title="$t('el.upload.delete')"></el-button>
             <el-button type="text" @click="dumpCommand(scope.row)" icon="fa fa-code" :title="$t('message.dump_to_clipboard')"></el-button>
           </template>
         </vxe-column>
@@ -73,6 +79,7 @@
 <script>
 import FormatViewer from '@/components/FormatViewer';
 import { VxeTable, VxeColumn } from 'vxe-table';
+import { resolveElIcon } from '@/element-plus-icons';
 
 export default {
   data() {
@@ -108,9 +115,10 @@ export default {
           this.$refs.contentTable && this.$refs.contentTable.scrollTo(0, 99999999);
         }, 0);
       }
-    }
+    },
   },
   methods: {
+    resolveElIcon,
     initShow(resetTable = true) {
       resetTable && this.resetTable();
       this.loadingIcon = 'el-icon-loading';
@@ -224,7 +232,7 @@ export default {
           if (reply > 0) {
             client.lrem(key, 1, before.value);
             // this.initShow(); // do not reinit, #786
-            this.$set(this.listData, this.listData.indexOf(before), newLine);
+            this.listData.splice(this.listData.indexOf(before), 1, newLine);
 
             this.$message.success({
               message: this.$t('message.modify_success'),
@@ -288,7 +296,7 @@ export default {
   mounted() {
     this.initShow();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.cancelScanning = true;
   },
 };

@@ -1,5 +1,5 @@
 import keymaster from 'keymaster';
-import { ipcRenderer } from 'electron';
+import electron from './electron';
 
 // enable shortcut in input, textarea, select
 keymaster.filter = e => true;
@@ -9,7 +9,7 @@ keymaster('ctrl+r, ⌘+r', e => false);
 
 // minimize window
 keymaster('ctrl+h, ctrl+m, ⌘+m', (e) => {
-  ipcRenderer.send('minimizeWindow');
+  electron.send('minimizeWindow');
   return false;
 });
 
@@ -21,7 +21,7 @@ keymaster('ctrl+h, ctrl+m, ⌘+m', (e) => {
 
 // toggle maximize
 keymaster('ctrl+enter, ⌘+enter', (e) => {
-  ipcRenderer.send('toggleMaximize');
+  electron.send('toggleMaximize');
   return false;
 });
 

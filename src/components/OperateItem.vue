@@ -15,9 +15,9 @@
                 {{`DB${index}`}}
                 <span class="db-select-key-count" v-if="dbKeysCount[index]">[{{dbKeysCount[index]}}]</span>
                 <span class="db-select-custom-name">
-                  <span class="db-select-key-count">{{dbNames[index]}}</span>
+                <span class="db-select-key-count">{{dbNames[index]}}</span>
 
-                  <span class="el-icon-edit-outline" @click.stop.prevent='customDbName(index)'></span>
+                  <ElementIcon name="el-icon-edit-outline" @click.stop.prevent='customDbName(index)'></ElementIcon>
                 </span>
               </span>
             </el-option>
@@ -28,7 +28,7 @@
         <!-- new key btn -->
         <el-col :span="12">
           <el-button class="new-key-btn" @click="newKeyDialog=true">
-            <i class="el-icon-plus"></i>
+            <ElementIcon name="el-icon-plus"></ElementIcon>
             {{ $t('message.add_new_key') }}
           </el-button>
         </el-col>
@@ -39,7 +39,7 @@
     <!-- <el-form-item class="search-item">
       <el-row>
         <el-col :span="24">
-          <el-input class="search-input" v-model="searchMatch" @keyup.enter.native="changeMatchMode()" :placeholder="$t('message.enter_to_search')" size="mini">
+          <el-input class="search-input" v-model="searchMatch" @keyup.enter="changeMatchMode()" :placeholder="$t('message.enter_to_search')" size="mini">
             <span slot="suffix">
               <i class="el-input__icon search-icon" :class="searchIcon"  @click="changeMatchMode()"></i>
 
@@ -54,32 +54,50 @@
 
     <!-- autocomplete search input -->
     <el-form-item class="search-item">
-      <el-autocomplete
-        class="search-input"
-        v-model="searchMatch"
-        @select="changeMatchMode"
-        @keyup.enter="changeMatchMode()"
-        :debounce="searchDebounce"
-        :fetch-suggestions="querySearch"
-        :placeholder="$t('message.enter_to_search')"
-        :trigger-on-focus="false"
-        :select-when-unmatched='true'>
-        <template slot="suffix">
-          <!-- cancel search -->
-          <i v-if="(searchIcon=='el-icon-loading') && showCancelIcon" class="el-input__icon search-icon el-icon-error" @click="cancelSearch()" :title="$t('el.messagebox.cancel')"></i>
-          <!-- start search -->
-          <i class="el-input__icon search-icon" :class="searchIcon"  @click="changeMatchMode()"></i>
+      <div class="search-input-row">
+        <el-autocomplete
+          class="search-input"
+          v-model="searchMatch"
+          @select="changeMatchMode"
+          @keyup.enter="changeMatchMode()"
+          :debounce="searchDebounce"
+          :fetch-suggestions="querySearch"
+          :placeholder="$t('message.enter_to_search')"
+          :trigger-on-focus="false"
+          :select-when-unmatched='true'>
+        </el-autocomplete>
 
-          <!-- extract search -->
-          <el-tooltip effect="dark" :content="$t('message.exact_search')" placement="bottom">
-            <el-checkbox v-model="searchExact"></el-checkbox>
-          </el-tooltip>
-        </template>
-      </el-autocomplete>
+        <el-tooltip effect="dark" :content="$t('message.exact_search')" placement="bottom">
+          <el-checkbox class="search-exact-checkbox" v-model="searchExact"></el-checkbox>
+        </el-tooltip>
+
+        <el-button
+          class="search-action-btn"
+          text
+          @click="(searchIcon=='el-icon-loading') && showCancelIcon ? cancelSearch() : changeMatchMode()">
+          <ElementIcon
+            v-if="(searchIcon=='el-icon-loading') && showCancelIcon"
+            class="search-icon"
+            name="el-icon-error"
+            :title="$t('el.messagebox.cancel')">
+          </ElementIcon>
+          <ElementIcon
+            v-else
+            class="search-icon"
+            :name="searchIcon"
+            :spin="searchIcon=='el-icon-loading'">
+          </ElementIcon>
+        </el-button>
+      </div>
     </el-form-item>
 
     <!-- new key dialog -->
-    <el-dialog :title="$t('message.add_new_key')" :visible.sync="newKeyDialog" :close-on-click-modal='false' @opened="openNewKeyDialog" append-to-body>
+    <el-dialog
+      :title="$t('message.add_new_key')"
+      v-model="newKeyDialog"
+      :close-on-click-modal='false'
+      append-to-body
+      @opened="openNewKeyDialog">
       <el-form label-position="top" size="mini">
         <el-form-item :label="$t('message.key_name')">
           <el-input v-model='newKeyName' ref="newKeyNameInput"></el-input>
@@ -97,16 +115,22 @@
         </el-form-item>
       </el-form>
 
-      <div slot="footer" class="dialog-footer">
-        <el-button @click="newKeyDialog = false">{{ $t('el.messagebox.cancel') }}</el-button>
-        <el-button type="primary" @click="addNewKey">{{ $t('el.messagebox.confirm') }}</el-button>
-      </div>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="newKeyDialog = false">{{ $t('el.messagebox.cancel') }}</el-button>
+          <el-button type="primary" @click="addNewKey">{{ $t('el.messagebox.confirm') }}</el-button>
+        </div>
+      </template>
     </el-dialog>
   </el-form>
 </template>
 
 <script type="text/javascript">
+import electron from '@/electron';
+import ElementIcon from '@/components/ElementIcon';
+
 export default {
+  inject: ['connectionWrapper'],
   data() {
     return {
       dbs: [0],
@@ -136,6 +160,7 @@ export default {
     };
   },
   props: ['client', 'config'],
+  components: { ElementIcon },
   watch: {
     dbs(newValue, oldValue) {
       this.dbsCopy = newValue.concat();
@@ -163,6 +188,11 @@ export default {
     });
   },
   methods: {
+    getKeyList() {
+      return this.connectionWrapper && this.connectionWrapper.$refs
+        ? this.connectionWrapper.$refs.keyList
+        : null;
+    },
     initShow() {
       this.initDatabaseSelect();
       this.initCustomDbName();
@@ -201,7 +231,9 @@ export default {
 
         for (const line of keyspace) {
           keyCount = line.match(/db(\d+)\:keys=(\d+)/);
-          keyCount && this.$set(this.dbKeysCount, keyCount[1], keyCount[2]);
+          if (keyCount) {
+            this.dbKeysCount = { ...this.dbKeysCount, [keyCount[1]]: keyCount[2] };
+          }
         }
 
         if (!guessMaxDb || !keyCount || !keyCount[1]) {
@@ -230,7 +262,8 @@ export default {
         .then(() => {
         // clear the search input
           this.searchMatch = '';
-          this.$parent.$parent.$parent.$refs.keyList.refreshKeyList();
+          const keyList = this.getKeyList();
+          keyList && keyList.refreshKeyList();
           const dbKey = this.$storage.getStorageKeyByName('last_db', this.config.connectionName);
           // store the last selected db
           localStorage.setItem(dbKey, this.selectedDbIndex);
@@ -253,7 +286,7 @@ export default {
       const name = this.dbNames[db];
 
       this.$prompt(this.$t('message.custom_name'), { inputValue: name }).then(({ value }) => {
-        this.$set(this.dbNames, db, value);
+        this.dbNames = { ...this.dbNames, [db]: value };
         const dbKey = this.$storage.getStorageKeyByName('custom_db', this.config.connectionName);
         localStorage.setItem(dbKey, JSON.stringify(this.dbNames));
       }).catch(() => {});
@@ -261,7 +294,7 @@ export default {
     filterDbCustomName(query) {
       query = query.toLocaleLowerCase();
 
-      this.dbsCopy = this.dbs.filter(dbIndex => {
+      this.dbsCopy = this.dbs.filter((dbIndex) => {
         if (`db${dbIndex}`.includes(query)) {
           return true;
         }
@@ -343,7 +376,8 @@ export default {
         this.searchHistory.add(this.searchMatch);
       }, this.searchDebounce + 100);
 
-      this.$parent.$parent.$parent.$refs.keyList.refreshKeyList();
+      const keyList = this.getKeyList();
+      keyList && keyList.refreshKeyList();
     },
     querySearch(input, cb) {
       const items = [];
@@ -370,7 +404,7 @@ export default {
       // record raw tips count
       this.searchHistoryCount = this.searchHistory.size;
 
-      ipcRenderer.on('closingWindow', (event, arg) => {
+      this.removeClosingWindowListener = electron.on('closingWindow', () => {
         this.storeHistory();
       });
     },
@@ -383,10 +417,15 @@ export default {
       localStorage.setItem(key, JSON.stringify(Array.from(this.searchHistory).slice(-200)));
     },
     cancelSearch() {
+      const keyList = this.getKeyList();
+      if (!keyList) {
+        return;
+      }
+
       // stop scanning in keyList
-      this.$parent.$parent.$parent.$refs.keyList.cancelScanning();
+      keyList.cancelScanning();
       // reset search status
-      this.$parent.$parent.$parent.$refs.keyList.resetSearchStatus();
+      keyList.resetSearchStatus();
     },
     revertDbFilter(visible) {
       // revert only when select shows
@@ -395,6 +434,9 @@ export default {
   },
   mounted() {
     this.initHistory();
+  },
+  beforeUnmount() {
+    this.removeClosingWindowListener && this.removeClosingWindowListener();
   },
 };
 </script>
@@ -425,33 +467,35 @@ export default {
     margin-top: -10px;
     margin-bottom: 15px;
   }
-  /*fix extract checkbox height*/
-  .connection-menu .search-item .el-input__suffix-inner {
-    display: inline-block;
-  }
-  .connection-menu .search-input {
+  .connection-menu .search-input-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     width: 100%;
   }
-  .connection-menu .search-input .el-input__inner {
-    padding-right: 62px;
-    /*margin-top: -10px;;
-    margin-bottom: 15px;*/
+  .connection-menu .search-input {
+    flex: 1;
+    width: auto;
+  }
+  .connection-menu .search-exact-checkbox {
+    flex: 0 0 auto;
+    margin-right: 0;
+  }
+  .connection-menu .search-action-btn {
+    flex: 0 0 auto;
+    min-height: 28px;
+    padding: 4px 6px;
+  }
+  .connection-menu .search-input .el-input__wrapper {
+    width: 100%;
   }
 
-  .connection-menu .el-submenu__title .el-submenu__icon-arrow {
-    right: 7px;
-    top: 54%;
-  }
-  .connection-menu .el-submenu [class^=el-icon-] {
+  .connection-menu .el-icon {
     font-size: 12px;
     margin: 0px;
     width: auto;
     /*color: grey;*/
     vertical-align: baseline;
-  }
-
-  .connection-menu .el-submenu.is-opened {
-    /*background: #ECF5FF;*/
   }
 
   .connection-menu .connection-form {
@@ -463,9 +507,5 @@ export default {
     color: #a5a8ad;
     cursor: pointer;
     width: 20px;
-  }
-  .connection-menu .search-item .el-checkbox__input {
-    /*line-height: 28px;*/
-    display: inline;
   }
 </style>

@@ -4,6 +4,7 @@ const {
 } = require('electron');
 const url = require('url');
 const path = require('path');
+const fs = require('fs');
 const fontManager = require('./font-manager');
 const winState = require('./win-state');
 
@@ -52,9 +53,8 @@ function createWindow() {
     icon: `${__dirname}/icons/icon.png`,
     autoHideMenuBar: true,
     webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: true,
-      // add this to keep 'remote' module avaiable. Tips: it will be removed in electron 14
-      enableRemoteModule: true,
       contextIsolation: false,
     },
   });
@@ -162,6 +162,50 @@ nativeTheme.on('updated', () => {
 });
 
 ipcMain.handle('getTempPath', (event, arg) => app.getPath('temp'));
+
+ipcMain.handle('dialog:showOpenDialog', (event, options = {}) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  return dialog.showOpenDialog(window, options);
+});
+
+ipcMain.handle('clipboard:writeText', async (event, text = '') => {
+  const { clipboard } = require('electron');
+  clipboard.writeText(text);
+});
+
+ipcMain.handle('shell:openExternal', async (event, targetUrl) => {
+  const { shell } = require('electron');
+  return shell.openExternal(targetUrl);
+});
+
+ipcMain.on('fs:readFileSync', (event, payload = {}) => {
+  const { file, bookmark = '' } = payload;
+
+  if (!file) {
+    event.returnValue = '';
+    return;
+  }
+
+  let stopAccessing;
+
+  try {
+    if (
+      bookmark
+      && typeof app.startAccessingSecurityScopedResource === 'function'
+    ) {
+      stopAccessing = app.startAccessingSecurityScopedResource(bookmark);
+    }
+
+    const content = fs.readFileSync(file);
+    event.returnValue = content.toString('base64');
+  } catch (error) {
+    event.returnValue = '';
+  } finally {
+    if (typeof stopAccessing === 'function') {
+      stopAccessing();
+    }
+  }
+});
 
 // for mac copy paset shortcut
 if (process.platform === 'darwin') {

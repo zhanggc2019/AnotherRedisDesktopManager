@@ -2,7 +2,7 @@
   <div>
     <!-- <el-tag v-if="!buffVisible" class='input-binary-tag' size="mini">[Hex]</el-tag> -->
     <el-input :disabled='disabled' :value='contentDisplay' @change="updateContent($event)" :placeholder="placeholder">
-      <template v-if="!buffVisible" slot="prefix">Hex</template>
+      <template v-if="!buffVisible" #prefix>Hex</template>
     </el-input>
   </div>
 </template>

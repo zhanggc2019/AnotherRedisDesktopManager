@@ -14,7 +14,7 @@
       <el-button
         ref='scanMoreBtn'
         class='load-more-keys'
-        :icon="searching && !loadingAll ? 'el-icon-loading' : ''"
+        :icon="resolveElIcon(searching && !loadingAll ? 'el-icon-loading' : '')"
         :disabled='scanMoreDisabled || searching'
         @click='refreshKeyList(false)'>
         {{ $t('message.load_more_keys') }}
@@ -23,13 +23,13 @@
       <!-- load all -->
       <!-- fix el-tooltip 200ms delay when closing -->
       <el-tooltip v-if='showLoadAllKeys' :disabled="!loadAllTooltip"
-        @mouseenter.native="loadAllTooltip=true" @mouseleave.native="loadAllTooltip=false"
+        @mouseenter="loadAllTooltip=true" @mouseleave="loadAllTooltip=false"
         effect="dark" :content="$t('message.load_all_keys_tip')"
         placement="bottom" :open-delay=380 :enterable='false'>
         <el-button
           class='load-more-keys'
           type= 'danger'
-          :icon="searching && loadingAll ? 'el-icon-loading' : ''"
+          :icon="resolveElIcon(searching && loadingAll ? 'el-icon-loading' : '')"
           :disabled='searching'
           @click='loadAllKeys()'>
           {{ $t('message.load_all_keys') }}
@@ -41,8 +41,10 @@
 
 <script type="text/javascript">
 import KeyListVirtualTree from '@/components/KeyListVirtualTree';
+import { resolveElIcon } from '@/element-plus-icons';
 
 export default {
+  inject: ['connectionWrapper'],
   data() {
     return {
       keyList: [],
@@ -82,7 +84,8 @@ export default {
       return this.globalSettings.showLoadAllKeys;
     },
     searching() {
-      return this.$parent.$parent.$parent.$refs.operateItem.searchIcon == 'el-icon-loading';
+      const operateItem = this.getOperateItem();
+      return !!operateItem && operateItem.searchIcon == 'el-icon-loading';
     },
   },
   created() {
@@ -103,6 +106,12 @@ export default {
     });
   },
   methods: {
+    resolveElIcon,
+    getOperateItem() {
+      return this.connectionWrapper && this.connectionWrapper.$refs
+        ? this.connectionWrapper.$refs.operateItem
+        : null;
+    },
     initShow() {
       this.refreshKeyList();
     },
@@ -117,7 +126,8 @@ export default {
       this.setSearchStatus();
 
       // extract search
-      if (this.$parent.$parent.$parent.$refs.operateItem.searchExact === true) {
+      const operateItem = this.getOperateItem();
+      if (operateItem && operateItem.searchExact === true) {
         return this.refreshKeyListExact();
       }
 
@@ -221,16 +231,27 @@ export default {
       this.loadingAll = false;
     },
     setSearchStatus() {
+      const operateItem = this.getOperateItem();
+      if (!operateItem) {
+        return;
+      }
+
       // search loading
-      this.$parent.$parent.$parent.$refs.operateItem.searchIcon = 'el-icon-loading';
+      operateItem.searchIcon = 'el-icon-loading';
       // show cancel scanning btn after scanning for a while
-      this.$parent.$parent.$parent.$refs.operateItem.toggleCancelIcon(true);
+      operateItem.toggleCancelIcon(true);
     },
     resetSearchStatus() {
+      const operateItem = this.getOperateItem();
+      if (!operateItem) {
+        this.loadingAll = false;
+        return;
+      }
+
       // search input icon recover
-      this.$parent.$parent.$parent.$refs.operateItem.searchIcon = 'el-icon-search';
+      operateItem.searchIcon = 'el-icon-search';
       // remove cancel scanning btn
-      this.$parent.$parent.$parent.$refs.operateItem.toggleCancelIcon(false);
+      operateItem.toggleCancelIcon(false);
       // reset loading all status
       this.loadingAll = false;
     },
@@ -254,7 +275,8 @@ export default {
       }
     },
     getMatchMode(fillStar = true) {
-      let match = this.$parent.$parent.$parent.$refs.operateItem.searchMatch;
+      const operateItem = this.getOperateItem();
+      let match = operateItem ? operateItem.searchMatch : '';
 
       match = match || '*';
 

@@ -6,7 +6,7 @@
   "private": true,
   "main": "electron-main.js",
   "dependencies": {
-    "electron-updater": "4.6.5",
+    "electron-updater": "^6.8.3",
     "font-list": "^1.4.5"
   },
   "repository": "github:qishibo/AnotherRedisDesktopManager",
@@ -20,8 +20,12 @@
       "output": "build-apps",
       "buildResources": "./"
     },
-    "electronVersion": "12.2.3",
+    "electronVersion": "41.0.4",
     "files": [
+      "**/*",
+      "!build-apps{,/**}",
+      "!app.asar{,/**}",
+      "!app.asar.unpacked{,/**}",
       "!static/js/*.map",
       "!static/css/*.map",
       "!*.map"

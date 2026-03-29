@@ -1,3 +1,5 @@
+import electron from './electron';
+
 export default {
   data: {},
   get(name) {
@@ -343,8 +345,7 @@ export default {
     });
   },
   copyToClipboard(text) {
-    const { clipboard } = require('electron');
-    clipboard.writeText(text ? text.toString() : '');
+    electron.writeText(text ? text.toString() : '');
   },
   debounce(func, wait, immediate = false, context = null) {
     let timeout; let

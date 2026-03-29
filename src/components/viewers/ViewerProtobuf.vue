@@ -11,7 +11,7 @@
         </el-option>
       </el-select>
       <!-- select proto file -->
-      <el-button class="select-proto-btn" type='primary' size="mini" icon="el-icon-upload2" @click="selectProto">Select Proto Files</el-button>
+      <el-button class="select-proto-btn" type='primary' size="mini" :icon="resolveElIcon('el-icon-upload2')" @click="selectProto">Select Proto Files</el-button>
     </div>
     <!-- selected files -->
     <!-- <el-tag v-for="p of proto" :key="p" class="selected-proto-file-tag">{{ p }}</el-tag> -->
@@ -22,9 +22,10 @@
 <script type="text/javascript">
 import JsonEditor from '@/components/JsonEditor';
 import { getData } from 'rawproto';
+import electron from '@/electron';
+import { resolveElIcon } from '@/element-plus-icons';
 // import * as protobuf from 'protobufjs';
 const protobuf = require('protobufjs/minimal');
-const { dialog } = require('electron').remote;
 
 export default {
   data() {
@@ -52,6 +53,7 @@ export default {
     },
   },
   methods: {
+    resolveElIcon,
     traverseTypes(current) {
       if (current instanceof protobuf.Type) {
         this.types.push(current.fullName);
@@ -63,7 +65,7 @@ export default {
       }
     },
     selectProto() {
-      dialog.showOpenDialog({
+      electron.showOpenDialog({
         properties: ['openFile', 'multiSelections'],
         filters: [
           {

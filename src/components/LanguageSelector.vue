@@ -11,6 +11,8 @@
 </template>
 
 <script type="text/javascript">
+import { setLocale } from '@/i18n/i18n';
+
 export default {
   data() {
     return {
@@ -35,7 +37,7 @@ export default {
   methods: {
     changeLang(lang) {
       localStorage.lang = this.selectedLang;
-      this.$i18n.locale = this.selectedLang;
+      setLocale(this.selectedLang);
     },
   },
   mounted() {

@@ -1,10 +1,14 @@
 <template>
-  <el-input :value="value" @input="handleInput" :type="inputType" :placeholder="placeholder">
-    <i v-if="!hidepass" ref="toggler" slot="suffix" class="toggler el-icon-view" @click="togglePassword"></i>
+  <el-input :model-value="innerValue" @input="handleInput" :type="inputType" :placeholder="placeholder">
+    <template #suffix>
+      <ElementIcon v-if="!hidepass" ref="toggler" class="toggler" name="el-icon-view" @click="togglePassword"></ElementIcon>
+    </template>
   </el-input>
 </template>
 
 <script type="text/javascript">
+import ElementIcon from '@/components/ElementIcon';
+
 export default {
   data() {
     return {
@@ -12,10 +16,17 @@ export default {
       hideTextTime: 6000,
     };
   },
-  props: ['value', 'placeholder', 'hidepass'],
+  components: { ElementIcon },
+  props: ['value', 'modelValue', 'placeholder', 'hidepass'],
+  computed: {
+    innerValue() {
+      return this.modelValue !== undefined ? this.modelValue : this.value;
+    },
+  },
   methods: {
     handleInput(newValue) {
       this.$emit('input', newValue);
+      this.$emit('update:modelValue', newValue);
     },
     togglePassword() {
       clearTimeout(this.recoverTimer);
@@ -42,7 +53,7 @@ export default {
       }
     },
   },
-  destroyed() {
+  beforeUnmount() {
     clearTimeout(this.recoverTimer);
   },
 };

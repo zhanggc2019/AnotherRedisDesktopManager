@@ -144,9 +144,9 @@ export default {
     // this.monacoEditor.getAction('editor.foldLevel3').run();
     // this.monacoEditor.getAction('editor.action.formatDocument').run();
   },
-  destroyed() {
+  unmounted() {
     // window.removeEventListener("resize", this.onResize);
-    this.monacoEditor.dispose();
+    this.monacoEditor && this.monacoEditor.dispose();
     this.$bus.$off('fontInited', this.changeFont);
   },
 };

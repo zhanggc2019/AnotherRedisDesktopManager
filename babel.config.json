@@ -7,6 +7,10 @@
   "plugins": [
     "@babel/plugin-transform-runtime",
     "@babel/plugin-syntax-dynamic-import",
-    "@babel/plugin-proposal-object-rest-spread"
+    "@babel/plugin-proposal-object-rest-spread",
+    "@babel/plugin-transform-nullish-coalescing-operator",
+    "@babel/plugin-transform-optional-chaining",
+    "@babel/plugin-transform-logical-assignment-operators",
+    "@babel/plugin-transform-optional-catch-binding"
   ]
 }

@@ -87,8 +87,8 @@ export default {
       messageContribution.dispose();
     });
   },
-  destroyed() {
-    this.monacoEditor.dispose();
+  unmounted() {
+    this.monacoEditor && this.monacoEditor.dispose();
     this.$bus.$off('fontInited', this.changeFont);
   },
 };

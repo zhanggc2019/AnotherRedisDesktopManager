@@ -17,9 +17,9 @@
       popper-class="cli-console-suggestion"
       ref="cliParams"
       @select='$refs.cliParams.focus()'
-      @keyup.enter.native="consoleExec"
-      @keyup.up.native="searchUp"
-      @keyup.down.native="searchDown">
+      @keyup.enter="consoleExec"
+      @keyup.up="searchUp"
+      @keyup.down="searchDown">
     </el-autocomplete>
 
     <!-- stop sub\monitor btn -->
@@ -31,7 +31,7 @@
 <script type="text/javascript">
 import { allCMD } from '@/commands';
 import splitargs from '@qii404/redis-splitargs';
-import { ipcRenderer } from 'electron';
+import electron from '@/electron';
 import CliContent from '@/components/CliContent';
 
 export default {
@@ -415,7 +415,7 @@ export default {
 
       this.inputSuggestionItems = tips ? JSON.parse(tips) : [];
 
-      ipcRenderer.on('closingWindow', (event, arg) => {
+      this.removeClosingWindowListener = electron.on('closingWindow', () => {
         this.storeCommandTips();
       });
     },
@@ -429,9 +429,10 @@ export default {
     this.initShortcut();
     this.initHistoryTips();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.anoClient && this.anoClient.quit && this.anoClient.quit();
     this.$shortcut.deleteScope(this.hotKeyScope);
+    this.removeClosingWindowListener && this.removeClosingWindowListener();
     this.storeCommandTips();
   },
 };

@@ -1,34 +1,37 @@
 <template>
-  <el-container class="wrap-container" spellcheck="false">
-    <!-- left aside draggable container -->
-    <div class="aside-drag-container" :style="{width: sideWidth + 'px'}">
-      <!-- connections -->
-      <el-aside class="aside-connection">
-        <Aside></Aside>
-      </el-aside>
+  <el-config-provider :locale="elementLocale">
+    <el-container class="wrap-container" spellcheck="false">
+      <!-- left aside draggable container -->
+      <div class="aside-drag-container" :style="{width: sideWidth + 'px'}">
+        <!-- connections -->
+        <el-aside class="aside-connection">
+          <Aside></Aside>
+        </el-aside>
 
-      <!-- drag area -->
-      <div id="drag-resize-container">
-        <div id="drag-resize-pointer"></div>
+        <!-- drag area -->
+        <div id="drag-resize-container">
+          <div id="drag-resize-pointer"></div>
+        </div>
       </div>
-    </div>
 
-    <!-- right main container -->
-    <el-container class='right-main-container'>
-      <!-- tab container -->
-      <el-main class='main-tabs-container'>
-        <Tabs></Tabs>
-      </el-main>
+      <!-- right main container -->
+      <el-container class='right-main-container'>
+        <!-- tab container -->
+        <el-main class='main-tabs-container'>
+          <Tabs></Tabs>
+        </el-main>
+      </el-container>
+
+      <UpdateCheck></UpdateCheck>
     </el-container>
-
-    <UpdateCheck></UpdateCheck>
-  </el-container>
+  </el-config-provider>
 </template>
 
 <script>
 import Aside from '@/Aside';
 import Tabs from '@/components/Tabs';
 import UpdateCheck from '@/components/UpdateCheck';
+import { getElementLocale, localeState } from '@/i18n/i18n';
 import addon from './addon';
 
 export default {
@@ -47,6 +50,11 @@ export default {
     this.restoreSideBarWidth();
   },
   components: { Aside, Tabs, UpdateCheck },
+  computed: {
+    elementLocale() {
+      return getElementLocale(localeState.value);
+    },
+  },
   methods: {
     bindSideBarDrag() {
       const that = this;

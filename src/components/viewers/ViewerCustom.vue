@@ -2,7 +2,7 @@
   <JsonEditor ref='editor' :content='newContent' class='viewer-custom-editor'>
     <p :title="fullCommand" class="command-preview">
       <el-button size="mini" class="viewer-custom-copy-raw"
-        :title='$t("message.copy")' icon="el-icon-document" type="text"
+        :title='$t("message.copy")' :icon="resolveElIcon('el-icon-document')" type="text"
         @click="$util.copyToClipboard(fullCommand)">
       </el-button>
       {{ previewCommand }}
@@ -14,7 +14,8 @@
 import storage from '@/storage';
 import shell from 'child_process';
 import JsonEditor from '@/components/JsonEditor';
-import { ipcRenderer } from 'electron';
+import electron from '@/electron';
+import { resolveElIcon } from '@/element-plus-icons';
 
 export default {
   data() {
@@ -43,6 +44,7 @@ export default {
     },
   },
   methods: {
+    resolveElIcon,
     getCommand() {
       const formatter = storage.getCustomFormatter(this.name);
 
@@ -99,7 +101,7 @@ export default {
       // if content is too long, write to file simultaneously
       // hex str is about 2 times of real size
       if (hexStr.length > this.writeHexFileSize) {
-        ipcRenderer.invoke('getTempPath').then((reply) => {
+        electron.invoke('getTempPath').then((reply) => {
           // target file name
           const fileName = `ardm_cv_${this.redisKey.toString('hex')}`;
           const filePath = require('path').join(reply, fileName);
