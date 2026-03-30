@@ -1,0 +1,25 @@
+/**
+ * Dark Mode CSS Variable Overrides
+ * 
+ * This file contains custom CSS variable overrides for Element Plus dark mode
+ * and application-specific dark theme customizations.
+ * 
+ * Element Plus automatically applies dark mode when <html class="dark"> is set.
+ * Use this file to override or extend Element Plus dark mode variables.
+ */
+
+/* Example: Override Element Plus dark mode colors */
+html.dark {
+  /* You can add custom CSS variables here */
+  /* --el-bg-color: #1a1a1a; */
+  /* --el-text-color-primary: #e0e0e0; */
+}
+
+/* Application-specific dark mode styles */
+html.dark body {
+  /* Custom body styles for dark mode */
+}
+
+html.dark .el-scrollbar__thumb {
+  /* Custom scrollbar styles */
+}
