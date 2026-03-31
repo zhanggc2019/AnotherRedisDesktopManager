@@ -6,6 +6,9 @@ import { resolve } from 'path'
 export default defineConfig({
   main: {
     // Electron 主进程：CommonJS 输出
+    define: {
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+    },
     build: {
       outDir: 'dist/main',
       rollupOptions: {
@@ -26,6 +29,14 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
+    optimizeDeps: {
+      exclude: [
+        'ioredis',
+        'tunnel-ssh',
+        'ssh2',
+        'cpu-features'
+      ]
+    },
     resolve: {
       alias: {
         '@': resolve('src/renderer')

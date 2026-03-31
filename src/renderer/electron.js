@@ -49,10 +49,16 @@ export default {
   openExternal(url) {
     return invoke('shell:openExternal', url);
   },
+  /**
+   * 设置页面缩放比例。
+   *
+   * @param {number} zoomFactor - 目标缩放比例
+   * @returns {Promise<number>} 实际应用的缩放比例
+   */
   setZoomFactor(zoomFactor = 1) {
-    // Note: setZoomFactor needs to be handled via IPC in the future
-    // For now, this is a no-op when contextIsolation is enabled
-    console.warn('setZoomFactor is not yet implemented via IPC');
+    const parsed = Number(zoomFactor);
+    const normalized = Number.isFinite(parsed) ? parsed : 1;
+    return invoke('window:setZoomFactor', normalized);
   },
   readFileSync(file, bookmark = '') {
     const contentBase64 = sendSync('fs:readFileSync', { file, bookmark });

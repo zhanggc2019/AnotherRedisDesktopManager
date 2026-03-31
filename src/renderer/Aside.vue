@@ -122,10 +122,16 @@ onUnmounted(() => {
 
 <style type="text/css">
   .aside-top-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     margin-right: 8px;
   }
   .aside-top-container .aside-new-connection-container {
-    margin-right: 109px;
+    order: -1;
+    flex: 1;
+    min-width: 0;
+    margin-right: 0;
   }
   .aside-new-connection-container .aside-new-connection-btn {
     width: 100%;
@@ -133,9 +139,9 @@ onUnmounted(() => {
     text-overflow: ellipsis;
   }
   .aside-top-container .aside-setting-btn {
-    float: right;
     width: 44px;
-    margin-right: 5px;
+    margin-right: 0;
+    flex: 0 0 44px;
   }
 
   .dark-mode .aside-top-container .el-button--info {

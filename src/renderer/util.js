@@ -4,7 +4,8 @@ import { ObjectInputStream } from 'java-object-serialization';
 import { Parser } from 'pickleparser';
 import { decode } from 'algo-msgpack-with-bigint';
 import { getData } from 'rawproto';
-import zlib from 'zlib';
+
+const zlib = require('zlib');
 
 // Internal data store
 const internalData = {};

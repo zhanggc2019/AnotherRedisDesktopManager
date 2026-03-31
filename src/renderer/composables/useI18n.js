@@ -32,12 +32,12 @@ export function useI18n() {
    */
   function initI18n() {
     const settings = storage.getSetting();
-    const savedLocale = settings.lang || localStorage.lang || 'en';
+    const savedLocale = settings.lang || localStorage.lang || 'cn';
 
     if (supportedLocales.includes(savedLocale)) {
       setLocale(savedLocale);
     } else {
-      setLocale('en');
+      setLocale('cn');
     }
   }
 
@@ -49,8 +49,8 @@ export function useI18n() {
    */
   function setLocale(lang) {
     if (!supportedLocales.includes(lang)) {
-      console.warn(`Unsupported locale: ${lang}, falling back to 'en'`);
-      lang = 'en';
+      console.warn(`Unsupported locale: ${lang}, falling back to 'cn'`);
+      lang = 'cn';
     }
 
     // 更新 vue-i18n

@@ -4,8 +4,8 @@
     :title="dialogTitle"
     :append-to-body="true"
     :close-on-click-modal="false"
-    class="new-connection-dailog"
-    width="90%"
+    custom-class="new-connection-dialog"
+    width="960px"
   >
     <!-- redis connection form -->
     <el-form
@@ -14,7 +14,11 @@
     >
       <el-row :gutter="20">
         <!-- left col -->
-        <el-col :span="12">
+        <el-col
+          :xs="24"
+          :sm="24"
+          :md="12"
+        >
           <el-form-item
             :label="t('message.host')"
             required
@@ -43,7 +47,11 @@
         </el-col>
 
         <!-- right col -->
-        <el-col :span="12">
+        <el-col
+          :xs="24"
+          :sm="24"
+          :md="12"
+        >
           <el-form-item
             :label="t('message.port')"
             required
@@ -130,7 +138,11 @@
 
       <el-row :gutter="20">
         <!-- left col -->
-        <el-col :span="12">
+        <el-col
+          :xs="24"
+          :sm="24"
+          :md="12"
+        >
           <el-form-item
             :label="t('message.host')"
             required
@@ -170,7 +182,11 @@
         </el-col>
 
         <!-- right col -->
-        <el-col :span="12">
+        <el-col
+          :xs="24"
+          :sm="24"
+          :md="12"
+        >
           <el-form-item
             :label="t('message.port')"
             required
@@ -214,7 +230,11 @@
 
       <el-row :gutter="20">
         <!-- left col -->
-        <el-col :span="12">
+        <el-col
+          :xs="24"
+          :sm="24"
+          :md="12"
+        >
           <el-form-item :label="t('message.private_key')">
             <FileInput
               :file="connection.sslOptions.key"
@@ -237,7 +257,11 @@
         </el-col>
 
         <!-- right col -->
-        <el-col :span="12">
+        <el-col
+          :xs="24"
+          :sm="24"
+          :md="12"
+        >
           <el-form-item :label="t('message.public_key')">
             <FileInput
               :file="connection.sslOptions.cert"
@@ -273,7 +297,11 @@
 
       <el-row :gutter="20">
         <!-- left col -->
-        <el-col :span="12">
+        <el-col
+          :xs="24"
+          :sm="24"
+          :md="12"
+        >
           <el-form-item :label="t('message.redis_node_password')">
             <InputPassword
               v-model="connection.sentinelOptions.nodePassword"
@@ -283,7 +311,11 @@
         </el-col>
 
         <!-- right col -->
-        <el-col :span="12">
+        <el-col
+          :xs="24"
+          :sm="24"
+          :md="12"
+        >
           <el-form-item
             :label="t('message.master_group_name')"
             required
@@ -454,16 +486,17 @@ defineExpose({
 </script>
 
 <style type="text/css">
-  .new-connection-dailog .el-checkbox {
+  .new-connection-dialog .el-checkbox {
     margin-left: 0;
     margin-right: 15px;
   }
 
-  .new-connection-dailog .el-dialog {
-    max-width: 900px;
+  .new-connection-dialog {
+    width: min(960px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
   }
 
-  .new-connection-dailog fieldset {
+  .new-connection-dialog fieldset {
     border-width: 2px 0 0 0;
     border-color: #fff;
     font-weight: bold;
@@ -471,7 +504,7 @@ defineExpose({
     font-size: 105%;
     margin-bottom: 3px;
   }
-  .dark-mode .new-connection-dailog fieldset {
+  .dark-mode .new-connection-dialog fieldset {
     color: #416586;
     border-color: #7b95ad;
   }

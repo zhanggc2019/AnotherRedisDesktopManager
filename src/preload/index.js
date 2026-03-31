@@ -13,6 +13,7 @@ const invokeChannels = new Set([
   'getMainArgs',
   'changeTheme',
   'getTempPath',
+  'window:setZoomFactor',
   'dialog:showOpenDialog',
   'clipboard:writeText',
   'shell:openExternal',
@@ -33,7 +34,7 @@ const onChannels = new Set([
   'os-theme-updated',
 ]);
 
-contextBridge.exposeInMainWorld('electronAPI', {
+const electronApi = {
   send(channel, ...args) {
     if (!sendChannels.has(channel)) {
       throw new Error(`Unsupported send channel: ${channel}`);
@@ -67,4 +68,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeListener(channel, wrapped);
     };
   },
-});
+};
+
+if (process.contextIsolated) {
+  contextBridge.exposeInMainWorld('electronAPI', electronApi);
+} else {
+  window.electronAPI = electronApi;
+}

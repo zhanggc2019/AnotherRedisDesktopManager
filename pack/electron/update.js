@@ -1,13 +1,16 @@
 const { session, ipcMain, net } = require('electron');
-const { autoUpdater } = require('electron-updater');
 
-// disable auto download
-autoUpdater.autoDownload = false;
-
+let autoUpdater;
 let mainEvent;
 
 const update = () => {
-  bindMainListener();
+  // Lazy load electron-updater to avoid accessing app before ready
+  if (!autoUpdater) {
+    autoUpdater = require('electron-updater').autoUpdater;
+    // disable auto download
+    autoUpdater.autoDownload = false;
+    bindMainListener();
+  }
 
   ipcMain.on('update-check', (event, arg) => {
     mainEvent = event;

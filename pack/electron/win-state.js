@@ -2,8 +2,28 @@ const { app, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+const DEFAULT_WINDOW_SIZE = {
+  width: 1280,
+  height: 820,
+};
+
 const winState = {
   // {x, y, width, height, maximized}
+  /**
+   * 获取默认窗口状态。
+   *
+   * @returns {{x: null, y: null, width: number, height: number, maximized: boolean}}
+   */
+  getDefaultState() {
+    return {
+      x: null,
+      y: null,
+      width: DEFAULT_WINDOW_SIZE.width,
+      height: DEFAULT_WINDOW_SIZE.height,
+      maximized: false,
+    };
+  },
+
   getLastState() {
     let data = '{}';
 
@@ -11,11 +31,31 @@ const winState = {
       data = fs.readFileSync(this.getStateFile());
     } catch (err) {}
 
-    const lastWinStage = this.parseJson(data);
+    const parsed = this.parseJson(data);
+    const lastWinStage = {
+      ...this.getDefaultState(),
+      ...(parsed && typeof parsed === 'object' ? parsed : {}),
+    };
     const lastX = lastWinStage.x;
     const lastY = lastWinStage.y;
 
-    const primary = screen.getPrimaryDisplay();
+    // Only check screen bounds if screen is available (after app ready)
+    let primary;
+    try {
+      primary = screen.getPrimaryDisplay();
+    } catch (e) {
+      // Screen not available yet, return default state
+      return this.getDefaultState();
+    }
+
+    // Do not relaunch in maximized mode, recover to a normal, usable size.
+    if (lastWinStage.maximized) {
+      lastWinStage.maximized = false;
+      lastWinStage.x = null;
+      lastWinStage.y = null;
+      lastWinStage.width = Math.min(DEFAULT_WINDOW_SIZE.width, primary.workAreaSize.width);
+      lastWinStage.height = Math.min(DEFAULT_WINDOW_SIZE.height, primary.workAreaSize.height);
+    }
 
     // recovery position only when app in primary screen
     // if in external screens, reset position for uncaught display issues
@@ -28,8 +68,10 @@ const winState = {
     }
 
     // adjust extremely small window
-    (lastWinStage.width < 250) && (lastWinStage.width = 1100);
-    (lastWinStage.height < 250) && (lastWinStage.height = 728);
+    (lastWinStage.width < 250) && (lastWinStage.width = DEFAULT_WINDOW_SIZE.width);
+    (lastWinStage.height < 250) && (lastWinStage.height = DEFAULT_WINDOW_SIZE.height);
+    (lastWinStage.width > primary.workAreaSize.width) && (lastWinStage.width = Math.min(DEFAULT_WINDOW_SIZE.width, primary.workAreaSize.width));
+    (lastWinStage.height > primary.workAreaSize.height) && (lastWinStage.height = Math.min(DEFAULT_WINDOW_SIZE.height, primary.workAreaSize.height));
 
     return lastWinStage;
 
@@ -74,14 +116,15 @@ const winState = {
 
   getWinState(win) {
     try {
-      const winBounds = win.getBounds();
+      const isMaximized = win.isMaximized();
+      const winBounds = isMaximized ? win.getNormalBounds() : win.getBounds();
 
       const state = {
         x: winBounds.x,
         y: winBounds.y,
         width: winBounds.width,
         height: winBounds.height,
-        maximized: win.isMaximized(),
+        maximized: isMaximized,
       };
 
       return state;

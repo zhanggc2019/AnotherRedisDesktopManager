@@ -5,15 +5,13 @@ const {
 const url = require('url');
 const path = require('path');
 const fs = require('fs');
-// eslint-disable-next-line no-unused-vars
-const fontManager = require('../../pack/electron/font-manager');
 const winState = require('../../pack/electron/win-state');
 
 // disable GPU for some white screen issues
 // app.disableHardwareAcceleration();
 // app.commandLine.appendSwitch('disable-gpu');
 
-global.APP_ENV = (process.env.ARDM_ENV === 'development') ? 'development' : 'production';
+global.APP_ENV = (process.env.NODE_ENV === 'development' || process.env.ARDM_ENV === 'development') ? 'development' : 'production';
 const { APP_ENV } = global;
 
 // Keep a global reference of the window object, if you don't, the window will
@@ -48,6 +46,19 @@ if (APP_ENV === 'production') {
   require('../../pack/electron/update')();
 }
 
+/**
+ * 构建开发环境 renderer URL，使用 electron-vite 注入地址并附加应用查询参数。
+ *
+ * @returns {string} 可直接传给 BrowserWindow.loadURL 的地址
+ */
+function getDevRendererUrl() {
+  const base = process.env.ELECTRON_RENDERER_URL || 'http://localhost:9988';
+  const target = new URL(base);
+  target.searchParams.set('version', app.getVersion());
+  target.searchParams.set('dark', String(nativeTheme.shouldUseDarkColors));
+  return target.toString();
+}
+
 function createWindow() {
   // get last win stage
   const lastWinStage = winState.getLastState();
@@ -58,17 +69,21 @@ function createWindow() {
     y: lastWinStage.y,
     width: lastWinStage.width,
     height: lastWinStage.height,
+    minWidth: 1024,
+    minHeight: 680,
     icon: path.join(__dirname, '../../pack/electron/icons/icon.png'),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
-      nodeIntegration: false,
-      contextIsolation: true,
+      nodeIntegration: true,
+      contextIsolation: false,
     },
   });
 
-  if (lastWinStage.maximized) {
-    mainWindow.maximize();
+  // Normalize baseline zoom to avoid persisted Chromium per-origin zoom side effects.
+  mainWindow.webContents.setZoomFactor(1);
+  if (typeof mainWindow.webContents.setVisualZoomLevelLimits === 'function') {
+    mainWindow.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {});
   }
 
   winState.watchClose(mainWindow);
@@ -82,11 +97,7 @@ function createWindow() {
       query: { version: app.getVersion(), dark: nativeTheme.shouldUseDarkColors },
     }));
   } else {
-    mainWindow.loadURL(url.format({
-      protocol: 'http',
-      host: 'localhost:9988',
-      query: { version: app.getVersion(), dark: nativeTheme.shouldUseDarkColors },
-    }));
+    mainWindow.loadURL(getDevRendererUrl());
   }
 
   // Open the DevTools.
@@ -112,7 +123,11 @@ function createWindow() {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
+app.on('ready', () => {
+  // Load font manager after app is ready
+  require('../../pack/electron/font-manager');
+  createWindow();
+});
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
@@ -170,6 +185,27 @@ nativeTheme.on('updated', () => {
 });
 
 ipcMain.handle('getTempPath', (_event, _arg) => app.getPath('temp'));
+
+/**
+ * 设置当前窗口缩放比例。
+ *
+ * @param {Electron.IpcMainInvokeEvent} event - 调用来源事件
+ * @param {number} zoomFactor - 目标缩放比例
+ * @returns {number} 实际应用的缩放比例
+ */
+ipcMain.handle('window:setZoomFactor', (event, zoomFactor = 1) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (!window) {
+    return 1;
+  }
+
+  const parsed = Number(zoomFactor);
+  const normalized = Number.isFinite(parsed) ? parsed : 1;
+  const clamped = Math.min(3, Math.max(0.5, normalized));
+
+  window.webContents.setZoomFactor(clamped);
+  return clamped;
+});
 
 ipcMain.handle('dialog:showOpenDialog', (event, options = {}) => {
   const window = BrowserWindow.fromWebContents(event.sender);

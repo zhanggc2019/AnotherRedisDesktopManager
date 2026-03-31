@@ -80,9 +80,11 @@
 import {
   ref, computed, onMounted, onUnmounted,
 } from 'vue';
-import { writeCMD } from '@/commands.js';
+import commands from '@/commands.js';
 import { VxeTable, VxeColumn } from 'vxe-table';
 import bus from '@/bus';
+
+const { writeCMD } = commands;
 
 const visible = ref(false);
 const logs = ref([]);

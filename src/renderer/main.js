@@ -47,6 +47,17 @@ app.config.globalProperties.$confirm = ElMessageBox.confirm;
 app.config.globalProperties.$prompt = ElMessageBox.prompt;
 app.config.globalProperties.$alert = ElMessageBox.alert;
 
+// Keep Vue 2-style globals for existing modules during migration.
+window.$bus = bus;
+window.$util = util;
+window.$storage = storage;
+window.$shortcut = shortcut;
+window.$message = ElMessage;
+window.$notify = ElNotification;
+window.$confirm = ElMessageBox.confirm;
+window.$prompt = ElMessageBox.prompt;
+window.$alert = ElMessageBox.alert;
+
 app.use(i18n);
 app.use(ElementPlus, { size: 'small' });
 

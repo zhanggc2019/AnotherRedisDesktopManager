@@ -30,7 +30,7 @@ import ko from './langs/ko';
 import vi from './langs/vi';
 
 export const localeState = reactive({
-  value: localStorage.lang || 'en',
+  value: localStorage.lang || 'cn',
 });
 
 export const elementLocaleMap = {
@@ -66,10 +66,10 @@ const messages = {
 };
 
 const i18n = createI18n({
-  legacy: true,
+  legacy: false,
   globalInjection: true,
   locale: localeState.value,
-  fallbackLocale: 'en',
+  fallbackLocale: 'cn',
   messages,
 });
 
@@ -79,7 +79,7 @@ export function getElementLocale(lang = localeState.value) {
 
 export function setLocale(lang) {
   localeState.value = lang;
-  i18n.global.locale = lang;
+  i18n.global.locale.value = lang;
 }
 
 export default i18n;

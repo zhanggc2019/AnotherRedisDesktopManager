@@ -20,7 +20,9 @@
           class="setting-row"
         >
           <el-col
+            :xs="24"
             :sm="12"
+            :md="12"
             :lg="5"
           >
             <!-- theme select-->
@@ -39,7 +41,9 @@
             </el-form-item>
           </el-col>
           <el-col
+            :xs="24"
             :sm="12"
+            :md="12"
             :lg="7"
           >
             <!-- language select -->
@@ -48,7 +52,9 @@
             </el-form-item>
           </el-col>
           <el-col
+            :xs="24"
             :sm="12"
+            :md="12"
             :lg="5"
           >
             <!-- zoom page -->
@@ -66,7 +72,9 @@
             </el-form-item>
           </el-col>
           <el-col
+            :xs="24"
             :sm="12"
+            :md="12"
             :lg="7"
           >
             <!-- font-family -->
@@ -127,7 +135,9 @@
           class="setting-row"
         >
           <el-col
+            :xs="24"
             :sm="12"
+            :md="12"
             :lg="12"
           >
             <!-- keys per loading -->
@@ -161,7 +171,9 @@
             </el-form-item>
           </el-col>
           <el-col
+            :xs="24"
             :sm="12"
+            :md="12"
             :lg="12"
           >
             <!-- export connections -->
@@ -192,21 +204,30 @@
             </el-tag>
           </div>
         </template>
-        <div class="current-version">
+        <div class="current-version-links">
           <a
+            class="setting-action-link"
             href="###"
             @click.stop.prevent="showHotkeys"
           >{{ t('message.hotkey') }}</a>
           <a
+            class="setting-action-link"
             href="###"
             @click.stop.prevent="clearCache"
           >{{ t('message.clear_cache') }}</a>
           <a
+            class="setting-action-link"
             href="###"
             @click.stop.prevent="checkUpdate"
           >{{ t('message.check_update') }}</a>
-          <a href="https://github.com/qishibo/AnotherRedisDesktopManager/releases">{{ t('message.manual_update') }}</a>
-          <a href="https://github.com/qishibo/AnotherRedisDesktopManager/">{{ t('message.project_home') }}</a>
+          <a
+            class="setting-action-link"
+            href="https://github.com/qishibo/AnotherRedisDesktopManager/releases"
+          >{{ t('message.manual_update') }}</a>
+          <a
+            class="setting-action-link"
+            href="https://github.com/qishibo/AnotherRedisDesktopManager/"
+          >{{ t('message.project_home') }}</a>
         </div>
       </el-card>
     </el-form>
@@ -455,9 +476,18 @@ defineExpose({
   background: inherit;
 }
 
-.setting-main-dialog .current-version a {
-  color: grey;
-  font-size: 95%;
+.setting-action-link {
+  color: #5f6368;
+  font-size: 13px;
+  line-height: 1;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #d8dde4;
+  background: #f5f7fa;
 }
 
 .setting-main-dialog .setting-card {
@@ -468,12 +498,12 @@ defineExpose({
   font-weight: bold;
 }
 
-.setting-main-dialog .setting-card .setting-row {
+.setting-card .setting-row {
   flex-wrap: wrap;
   align-items: flex-start;
 }
 
-.setting-main-dialog .setting-card .setting-row .el-col {
+.setting-card .setting-row .el-col {
   margin-bottom: 10px;
 }
 
@@ -482,27 +512,46 @@ defineExpose({
   width: 100%;
 }
 
-.setting-main-dialog .current-version {
+.current-version-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  row-gap: 10px;
+  column-gap: 10px;
+}
+
+.setting-action-link:hover {
+  color: #3b6f9d;
+  border-color: #a9bfd3;
+  background: #edf3f8;
+}
+
+.dark-mode .setting-action-link {
+  color: #d5dee6;
+  border-color: #4e6574;
+  background: #31414b;
+}
+
+.dark-mode .setting-action-link:hover {
+  color: #f0f6fb;
+  border-color: #6c8698;
+  background: #3b4f5b;
 }
 
 /* add height: fix el-select jitter when multiple*/
-.setting-main-dialog .setting-card .setting-row .setting-font-select .el-select__tags .el-tag {
+.setting-card .setting-row .setting-font-select .el-select__tags .el-tag {
   height: 21px;
   max-width: 98%;
 }
 
 /*label style inside el-select multiple*/
-.setting-main-dialog .setting-card .setting-row .setting-font-select .el-select__tags .el-tag .el-select__tags-text {
+.setting-card .setting-row .setting-font-select .el-select__tags .el-tag .el-select__tags-text {
   display: inline-block;
   max-width: 90%;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 /*fix close icon vertical align*/
-.setting-main-dialog .setting-card .setting-row .setting-font-select .el-select__tags .el-tag .el-tag__close {
+.setting-card .setting-row .setting-font-select .el-select__tags .el-tag .el-tag__close {
   vertical-align: super;
 }
 </style>

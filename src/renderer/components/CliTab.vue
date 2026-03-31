@@ -48,13 +48,15 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { allCMD } from '@/commands'
+import commands from '@/commands'
 import splitargs from '@qii404/redis-splitargs'
 import electron from '@/electron'
 import bus from '@/bus'
 import { getStorageKeyByName } from '@/storage'
 import { bufToString } from '@/util'
 import CliContent from '@/components/CliContent.vue'
+
+const { allCMD } = commands
 
 const props = defineProps({
   client: Object,

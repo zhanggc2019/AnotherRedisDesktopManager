@@ -25,7 +25,6 @@
 import { ref, computed } from 'vue';
 import JsonEditor from '@/components/JsonEditor.vue';
 import storage from '@/storage';
-import shell from 'child_process';
 import electron from '@/electron';
 import { resolveElIcon } from '@/element-plus-icons';
 import { useI18n } from '@/composables/useI18n';
@@ -37,6 +36,10 @@ import { watch } from 'vue';
 
 // Initialize on mount
 import { onMounted } from 'vue';
+
+const shell = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 const props = defineProps({
   content: {
@@ -150,9 +153,9 @@ const execCommand = () => {
     electron.invoke('getTempPath').then((reply) => {
       // target file name
       const fileName = `ardm_cv_${props.redisKey.toString('hex')}`;
-      const filePath = require('path').join(reply, fileName);
+      const filePath = path.join(reply, fileName);
 
-      require('fs').writeFile(filePath, hexStr, (err) => {
+      fs.writeFile(filePath, hexStr, (err) => {
         if (err) {
           return ElMessage.error(err);
         }

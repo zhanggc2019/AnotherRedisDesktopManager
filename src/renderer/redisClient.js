@@ -1,9 +1,11 @@
-import Redis from 'ioredis';
-import { createTunnel } from 'tunnel-ssh';
-import fs from 'fs';
 import vue from '@/main.js';
 import electron from '@/electron';
-import { writeCMD } from '@/commands.js';
+import commands from '@/commands.js';
+
+const Redis = require('ioredis');
+const { createTunnel } = require('tunnel-ssh');
+const fs = require('fs');
+const { writeCMD } = commands;
 
 const { sendCommand } = Redis.prototype;
 
