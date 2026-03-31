@@ -332,6 +332,12 @@
 
     <template #footer>
       <div class="dialog-footer">
+        <el-button
+          :loading="testingConnection"
+          @click="testConnection"
+        >
+          {{ t('message.test_connection') || 'Test Connection' }}
+        </el-button>
         <el-button @click="dialogVisible = false">
           {{ t('el.messagebox.cancel') }}
         </el-button>
@@ -351,6 +357,7 @@ import { ref, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from '@/composables/useI18n';
 import storage from '@/storage';
+import redisClient from '@/redisClient';
 import FileInput from '@/components/FileInput.vue';
 import InputPassword from '@/components/InputPassword.vue';
 import ElementIcon from '@/components/ElementIcon.vue';
@@ -406,6 +413,7 @@ const connectionEmpty = ref({});
 const sshOptionsShow = ref(false);
 const sslOptionsShow = ref(false);
 const sentinelOptionsShow = ref(false);
+const testingConnection = ref(false);
 
 const dialogTitle = computed(() => (props.editMode ? t('message.edit_connection') : t('message.new_connection')));
 
@@ -462,6 +470,143 @@ function editConnection() {
 
   dialogVisible.value = false;
   emit('edit-connection-finished', config);
+}
+
+async function testConnection() {
+  const config = JSON.parse(JSON.stringify(connection.value));
+
+  // 基本验证
+  if (!config.host) {
+    config.host = '127.0.0.1';
+  }
+  if (!config.port) {
+    config.port = 6379;
+  }
+
+  // 清理未启用的选项
+  const testConfig = { ...config };
+  if (!sshOptionsShow.value || !testConfig.sshOptions?.host) {
+    delete testConfig.sshOptions;
+  }
+  if (!sslOptionsShow.value) {
+    delete testConfig.sslOptions;
+  }
+  if (!sentinelOptionsShow.value || !testConfig.sentinelOptions?.masterName) {
+    delete testConfig.sentinelOptions;
+  }
+
+  testingConnection.value = true;
+
+  let client = null;
+  let timeoutId = null;
+
+  try {
+    // 创建连接
+    if (testConfig.sshOptions) {
+      client = await redisClient.createSSHConnection(
+        testConfig.sshOptions,
+        testConfig.host,
+        testConfig.port,
+        testConfig.auth,
+        testConfig,
+      );
+    } else {
+      client = await redisClient.createConnection(
+        testConfig.host,
+        testConfig.port,
+        testConfig.auth,
+        testConfig,
+      );
+    }
+
+    // 等待连接就绪，立即捕获错误
+    await new Promise((resolve, reject) => {
+      // 已经就绪
+      if (client.status === 'ready') {
+        resolve();
+        return;
+      }
+
+      // 监听事件
+      const onReady = () => {
+        clearTimeout(timeoutId);
+        client.off('error', onError);
+        resolve();
+      };
+
+      const onError = (err) => {
+        clearTimeout(timeoutId);
+        client.off('ready', onReady);
+        // 立即抛出认证错误、连接拒绝等
+        reject(err);
+      };
+
+      client.once('ready', onReady);
+      client.once('error', onError);
+
+      // 30秒超时
+      timeoutId = setTimeout(() => {
+        client.off('ready', onReady);
+        client.off('error', onError);
+        reject(new Error('Connection timeout: check network or firewall'));
+      }, 30000);
+    });
+
+    // 执行 PING 测试
+    const reply = await client.ping();
+
+    if (reply === 'PONG') {
+      ElMessage.success(t('message.connection_success') || 'Connection successful!');
+    } else {
+      ElMessage.error(t('message.connection_failed') || 'Connection failed');
+    }
+  } catch (error) {
+    // 友好化错误信息
+    let errorMsg = error.message || 'Unknown error';
+
+    // 检查各种认证和连接错误
+    if (errorMsg.includes('NOAUTH')) {
+      errorMsg = 'Authentication failed: password required';
+    } else if (errorMsg.includes('WRONGPASS')) {
+      errorMsg = 'Authentication failed: wrong password';
+    } else if (errorMsg.includes('ERR invalid password') || errorMsg.includes('invalid password')) {
+      errorMsg = 'Authentication failed: invalid password';
+    } else if (errorMsg.includes('ERR Client sent AUTH') || errorMsg.includes('without any password')) {
+      errorMsg = 'Authentication failed: password provided but not required';
+    } else if (errorMsg.includes('Authentication') || errorMsg.includes('AUTHFAILED')) {
+      errorMsg = 'Authentication failed: check username and password';
+    } else if (errorMsg.includes('ECONNREFUSED')) {
+      errorMsg = 'Connection refused: check host and port';
+    } else if (errorMsg.includes('ENOTFOUND') || errorMsg.includes('getaddrinfo')) {
+      errorMsg = 'Host not found: check hostname';
+    } else if (errorMsg.includes('ETIMEDOUT') || errorMsg.includes('timeout')) {
+      errorMsg = 'Connection timeout: check network or firewall';
+    } else if (errorMsg.includes('EHOSTUNREACH')) {
+      errorMsg = 'Host unreachable: check network connection';
+    } else if (errorMsg.includes('ENETUNREACH')) {
+      errorMsg = 'Network unreachable: check network connection';
+    }
+
+    ElMessage.error(`${t('message.connection_failed') || 'Connection failed'}: ${errorMsg}`);
+  } finally {
+    // 清理超时定时器
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    // 关闭测试连接
+    if (client) {
+      try {
+        client.quit();
+      } catch (e) {
+        try {
+          client.disconnect();
+        } catch (e2) {
+          // ignore
+        }
+      }
+    }
+    testingConnection.value = false;
+  }
 }
 
 onMounted(() => {

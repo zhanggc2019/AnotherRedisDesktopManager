@@ -256,7 +256,7 @@
       </el-col>
     </el-row>
 
-    <ScrollToTop parent-num="1" />
+    <ScrollToTop :parent-num="1" />
   </div>
 </template>
 

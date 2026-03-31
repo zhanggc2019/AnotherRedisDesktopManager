@@ -75,6 +75,8 @@ const connectionAnchor = computed(() => {
 provide('connectionWrapper', {
   client,
   expanded,
+  operateItem,
+  keyList,
 })
 
 const expandPanel = () => {
@@ -91,8 +93,24 @@ const handleHeaderClick = () => {
 }
 
 const initShow = () => {
-  operateItem.value?.initShow()
-  keyList.value?.initShow()
+  console.log('[ConnectionWrapper] initShow called');
+  console.log('[ConnectionWrapper] operateItem.value:', operateItem.value);
+  console.log('[ConnectionWrapper] keyList.value:', keyList.value);
+  console.log('[ConnectionWrapper] client.value:', client.value);
+  
+  if (operateItem.value && operateItem.value.initShow) {
+    console.log('[ConnectionWrapper] Calling operateItem.initShow');
+    operateItem.value.initShow();
+  } else {
+    console.warn('[ConnectionWrapper] operateItem.value or initShow not available');
+  }
+  
+  if (keyList.value && keyList.value.initShow) {
+    console.log('[ConnectionWrapper] Calling keyList.initShow');
+    keyList.value.initShow();
+  } else {
+    console.warn('[ConnectionWrapper] keyList.value or initShow not available');
+  }
 }
 
 const initLastSelectedDb = () => {
@@ -113,31 +131,58 @@ const openConnection = (callback = false, forceOpen = false) => {
     return forceOpen ? afterOpenConnection(client.value, callback) : false
   }
 
-  operateItem.value.searchIcon = 'el-icon-loading'
+  if (operateItem.value) {
+    operateItem.value.searchIcon = 'el-icon-loading'
+  }
 
   const clientPromise = getRedisClient(props.config)
 
   clientPromise.then((realClient) => {
+    // 确保client.value被设置
+    client.value = realClient
+    console.log('[ConnectionWrapper] client.value set in openConnection:', client.value);
     afterOpenConnection(realClient, callback)
-  }).catch((e) => {})
+  }).catch((e) => {
+    console.error('[ConnectionWrapper] Failed to get redis client:', e);
+  })
 }
 
 const afterOpenConnection = (realClient, callback = false) => {
+  console.log('[ConnectionWrapper] afterOpenConnection called, client status:', realClient.status);
+  console.log('[ConnectionWrapper] client.value:', client.value);
+  
   if (realClient.status !== 'ready') {
     realClient.on('ready', () => {
       if (realClient.readyInited) {
         return
       }
 
+      console.log('[ConnectionWrapper] Client ready event fired');
       realClient.readyInited = true
       bus.$emit('openStatus', realClient, resolvedConnectionName.value)
       startPingInterval()
-
-      initShow()
+      
+      // 使用nextTick确保DOM更新后再调用initShow
+      import('vue').then(({ nextTick }) => {
+        nextTick(() => {
+          console.log('[ConnectionWrapper] Calling initShow after nextTick');
+          initShow()
+        })
+      })
+      
       callback && callback()
     })
   } else {
-    initShow()
+    console.log('[ConnectionWrapper] Client already ready');
+    
+    // 使用nextTick确保DOM更新后再调用initShow
+    import('vue').then(({ nextTick }) => {
+      nextTick(() => {
+        console.log('[ConnectionWrapper] Calling initShow after nextTick');
+        initShow()
+      })
+    })
+    
     callback && callback()
   }
 }
@@ -182,8 +227,6 @@ const getRedisClient = (config) => {
   }
 
   clientPromise.then((realClient) => {
-    client.value = realClient
-
     realClient.on('error', (error) => {
       ElMessage.error({
         message: `Client On Error: ${error} Config right?`,
@@ -277,7 +320,6 @@ onBeforeUnmount(() => {
 <style type="text/css">
   .connection-menu {
     margin-bottom: 8px;
-    padding-right: 6px;
     border-right: 0;
     border-left: 1px solid #ebeef5;
   }
@@ -291,10 +333,15 @@ onBeforeUnmount(() => {
   .connection-menu-header {
     cursor: pointer;
     user-select: none;
+    padding-right: 8px;
   }
 
   .connection-menu-body {
-    padding-top: 6px;
+    padding: 6px 0 0 0;
+  }
+
+  .connection-menu-body .connection-form {
+    padding-right: 8px;
   }
 
   /*this error shows first*/

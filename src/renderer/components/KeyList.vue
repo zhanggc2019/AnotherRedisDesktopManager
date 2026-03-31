@@ -41,7 +41,7 @@
 
 <script setup>
 import {
-  ref, computed, watch, inject, onMounted,
+  ref, computed, watch, inject, onMounted, shallowRef,
 } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from '@/composables/useI18n';
@@ -58,12 +58,13 @@ const props = defineProps({
 
 const emit = defineEmits(['exportBatch']);
 
-const { t } = useI18n();
+const { getTranslate } = useI18n();
+const t = getTranslate();
 
 const connectionWrapper = inject('connectionWrapper');
 
 const keyList = ref([]);
-const keyListType = ref('KeyListVirtualTree');
+const keyListType = shallowRef(KeyListVirtualTree);
 const searchPageSize = 10000;
 let scanStreams = [];
 let scanningCount = 0;
@@ -78,9 +79,13 @@ const keysPageSize = computed(() => {
   // custom defined size
   if (keysPageSize) {
     // cluster mode, pageSize = size / masterNodes
-    if (props.client.nodes) {
-      const nodeCount = props.client.nodes('master').length;
-      return nodeCount ? parseInt(keysPageSize / nodeCount) : keysPageSize;
+    if (props.client && props.client.nodes) {
+      try {
+        const nodeCount = props.client.nodes('master').length;
+        return nodeCount ? parseInt(keysPageSize / nodeCount) : keysPageSize;
+      } catch (e) {
+        return keysPageSize;
+      }
     }
 
     // common mode
@@ -102,12 +107,15 @@ const searching = computed(() => {
 });
 
 function getOperateItem() {
-  return connectionWrapper && connectionWrapper.$refs
-    ? connectionWrapper.$refs.operateItem
+  return connectionWrapper && connectionWrapper.operateItem
+    ? connectionWrapper.operateItem.value
     : null;
 }
 
 function initShow() {
+  if (!props.client) {
+    return;
+  }
   refreshKeyList();
 }
 
@@ -116,6 +124,13 @@ function setDb(db) {
 }
 
 function refreshKeyList(resetKeyList = true) {
+  console.log('[KeyList] refreshKeyList called, resetKeyList:', resetKeyList, 'client:', props.client);
+  
+  if (!props.client) {
+    console.error('[KeyList] Client is null in refreshKeyList');
+    return;
+  }
+
   // reset previous list, not append mode
   resetKeyList && resetList();
 
@@ -125,16 +140,19 @@ function refreshKeyList(resetKeyList = true) {
   // extract search
   const operateItem = getOperateItem();
   if (operateItem && operateItem.searchExact === true) {
+    console.log('[KeyList] Using exact search mode');
     return refreshKeyListExact();
   }
 
   // init scanStream
   if (!scanStreams.length) {
+    console.log('[KeyList] Initializing scan streams');
     initScanStreamsAndScan();
   }
 
   // scan more, resume previous scanStream
   else {
+    console.log('[KeyList] Resuming existing scan streams');
     // reset one page scan param
     onePageKeysCount = 0;
 
@@ -154,70 +172,111 @@ function loadAllKeys() {
 }
 
 function initScanStreamsAndScan(loadAll = false) {
+  console.log('[KeyList] initScanStreamsAndScan called, loadAll:', loadAll, 'client:', props.client);
+  
+  if (!props.client) {
+    console.error('[KeyList] Client is not initialized');
+    ElMessage.error('Client is not initialized');
+    resetSearchStatus();
+    return;
+  }
+
   const nodes = props.client.nodes ? props.client.nodes('master') : [props.client];
+  console.log('[KeyList] Nodes:', nodes.length);
+  
   const keysPageSizeVal = loadAll ? 50000 : keysPageSize.value;
+  console.log('[KeyList] keysPageSize:', keysPageSizeVal);
+  
   scanningCount = nodes.length;
 
+  if (nodes.length === 0) {
+    console.error('[KeyList] No nodes available');
+    ElMessage.error('No nodes available');
+    resetSearchStatus();
+    return;
+  }
+
   nodes.map((node) => {
-    const scanOption = {
-      match: getMatchMode(),
-      count: keysPageSizeVal,
-    };
+    try {
+      const scanOption = {
+        match: getMatchMode(),
+        count: keysPageSizeVal,
+      };
 
-    // scan count is bigger when in search mode
-    scanOption.match != '*' && (scanOption.count = searchPageSize);
+      console.log('[KeyList] Scan options:', scanOption);
 
-    const stream = node.scanBufferStream(scanOption);
-    scanStreams.push(stream);
+      // scan count is bigger when in search mode
+      scanOption.match != '*' && (scanOption.count = searchPageSize);
 
-    stream.on('data', (keys) => {
-      if (!keys.length) {
-        return;
-      }
+      const stream = node.scanBufferStream(scanOption);
+      console.log('[KeyList] Stream created:', !!stream);
+      scanStreams.push(stream);
 
-      keyList.value = keyList.value.concat(keys);
-      onePageKeysCount += keys.length;
+      stream.on('data', (keys) => {
+        console.log('[KeyList] Stream data received, keys count:', keys.length);
+        if (!keys.length) {
+          return;
+        }
 
-      // scan once reaches page size
-      if (onePageKeysCount >= keysPageSizeVal && loadAll === false) {
-        // temp stop
-        stream.pause();
-        resetSearchStatus();
-      }
-    });
+        keyList.value = keyList.value.concat(keys);
+        onePageKeysCount += keys.length;
 
-    stream.on('error', (e) => {
-      resetSearchStatus();
+        console.log('[KeyList] Total keys loaded:', keyList.value.length);
+        console.log('[KeyList] keyList.value type:', Array.isArray(keyList.value));
+        console.log('[KeyList] First key sample:', keyList.value[0]);
 
-      // scan command disabled, other functions may be used normally
-      if (
-        (e.message.includes('unknown command') && e.message.includes('scan'))
-        || e.message.includes("command 'SCAN' is not allowed")
-      ) {
-        return ElMessage.error({
-          message: t('message.scan_disabled'),
-          duration: 1500,
-        });
-      }
-
-      // other errors
-      ElMessage.error({
-        message: `Stream On Error: ${e.message}`,
-        duration: 1500,
+        // scan once reaches page size
+        if (onePageKeysCount >= keysPageSizeVal && loadAll === false) {
+          console.log('[KeyList] Page size reached, pausing stream');
+          // temp stop
+          stream.pause();
+          resetSearchStatus();
+        }
       });
 
-      setTimeout(() => {
-        bus.$emit('closeConnection');
-      }, 50);
-    });
-
-    stream.on('end', () => {
-      // all nodes scan finished(cusor back to 0)
-      if (--scanningCount <= 0) {
-        scanMoreDisabled.value = true;
+      stream.on('error', (e) => {
+        console.error('[KeyList] Stream error:', e);
         resetSearchStatus();
-      }
-    });
+
+        // scan command disabled, other functions may be used normally
+        if (
+          (e.message.includes('unknown command') && e.message.includes('scan'))
+          || e.message.includes("command 'SCAN' is not allowed")
+        ) {
+          return ElMessage.error({
+            message: t('message.scan_disabled'),
+            duration: 1500,
+          });
+        }
+
+        // other errors
+        ElMessage.error({
+          message: `Stream On Error: ${e.message}`,
+          duration: 1500,
+        });
+
+        setTimeout(() => {
+          bus.$emit('closeConnection');
+        }, 50);
+      });
+
+      stream.on('end', () => {
+        console.log('[KeyList] Stream ended, remaining scanning count:', scanningCount - 1);
+        // all nodes scan finished(cusor back to 0)
+        if (--scanningCount <= 0) {
+          console.log('[KeyList] All streams finished');
+          scanMoreDisabled.value = true;
+          resetSearchStatus();
+        }
+      });
+    } catch (e) {
+      console.error('[KeyList] Scan error:', e);
+      ElMessage.error({
+        message: `Scan Error: ${e.message}`,
+        duration: 1500,
+      });
+      scanningCount--;
+    }
   });
 }
 
@@ -379,6 +438,25 @@ watch(
     }
   },
 );
+
+watch(
+  () => props.client,
+  (newClient, oldClient) => {
+    console.log('[KeyList] Client changed, old:', oldClient, 'new:', newClient);
+    if (newClient) {
+      console.log('[KeyList] Calling initShow from watch');
+      initShow();
+    }
+  },
+  { immediate: false }
+);
+
+defineExpose({
+  initShow,
+  refreshKeyList,
+  resetKeyList: resetList,
+  cancelScanning,
+});
 </script>
 
 <style type="text/css">

@@ -91,11 +91,19 @@ export function binaryStringToBuffer(str) {
 }
 
 export function cutString(string, maxLength = 20) {
-  if (string.length <= maxLength) {
-    return string;
+  // Handle undefined, null, or non-string values
+  if (!string) {
+    return '';
+  }
+  
+  // Convert to string if not already
+  const str = String(string);
+  
+  if (str.length <= maxLength) {
+    return str;
   }
 
-  return `${string.substr(0, maxLength)}...`;
+  return `${str.substr(0, maxLength)}...`;
 }
 
 export function isJson(string) {

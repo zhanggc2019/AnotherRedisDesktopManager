@@ -26,14 +26,14 @@
     </div>
 
     <ScrollToTop
-      parent-num="1"
+      :parent-num="1"
       :pos-right="false"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import Sortable from 'sortablejs'
 import { resolveElIcon } from '@/element-plus-icons'
 import { getConnections, getConnectionName, reOrderAndStore } from '@/storage'
@@ -84,25 +84,33 @@ const sortOrder = () => {
   })
 }
 
-bus.$on('refreshConnections', () => {
-  initConnections()
-})
-
-bus.$on('reloadSettings', (settings) => {
-  globalSettings.value = settings
-})
-
 onMounted(() => {
   initConnections()
   sortOrder()
+
+  bus.$on('refreshConnections', initConnections)
+  bus.$on('reloadSettings', (settings) => {
+    globalSettings.value = settings
+  })
+})
+
+onUnmounted(() => {
+  bus.$off('refreshConnections', initConnections)
+  bus.$off('reloadSettings')
+})
+
+// 暴露方法给父组件调用
+defineExpose({
+  initConnections,
 })
 </script>
 
 <style type="text/css">
   .connections-wrap {
-    height: calc(100vh - 59px);
+    flex: 1;
     overflow-y: auto;
     margin-top: 11px;
+    min-height: 0;
   }
   .connections-wrap .filter-input {
     padding-right: 13px;
@@ -110,6 +118,6 @@ onMounted(() => {
   }
   /* set drag area min height, target to the end will be correct */
   .connections-wrap .connections-list {
-    min-height: calc(100vh - 110px);
+    min-height: 100%;
   }
 </style>

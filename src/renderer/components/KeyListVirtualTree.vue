@@ -20,7 +20,7 @@
           <el-col :span="8">
             <el-button
               type="danger"
-              size="mini"
+              size="small"
               @click="deleteBatch"
             >
               {{ t('el.upload.delete') }}
@@ -29,7 +29,7 @@
           <el-col :span="8">
             <el-button
               type="primary"
-              size="mini"
+              size="small"
               @click="clickItem(&quot;export&quot;)"
             >
               {{ t('message.export') }}
@@ -39,7 +39,7 @@
             <el-button
               type="primary"
               plain
-              size="mini"
+              size="small"
               @click="hideMultiSelect"
             >
               {{ t('el.messagebox.cancel') }}
@@ -170,7 +170,8 @@ const props = defineProps({
 
 const emit = defineEmits(['exportBatch']);
 
-const { t } = useI18n();
+const { getTranslate } = useI18n();
+const t = getTranslate();
 
 const treeWrapper = ref(null);
 const rightMenu = ref(null);
@@ -575,6 +576,10 @@ function clickKey(key, newTab = false) {
 watch(
   () => props.keyList,
   (newList) => {
+    console.log('[KeyListVirtualTree] keyList watch triggered!');
+    console.log('[KeyListVirtualTree] keyList changed, length:', newList ? newList.length : 0);
+    console.log('[KeyListVirtualTree] keyList value:', newList);
+    
     let newListCopy = newList;
 
     if (newList.length > treeNodesOverflow) {
@@ -591,8 +596,13 @@ watch(
       ? keysToTree(newListCopy, separator.value, new Set(expandedKeys.value), treeNodesOverflow)
       : keysToList(newListCopy);
 
+    console.log('[KeyListVirtualTree] newKeyNodes length:', newKeyNodes.length);
+    
     sortTreeNodes(newKeyNodes);
     keyNodes.value = newKeyNodes;
+    
+    console.log('[KeyListVirtualTree] keyNodes.value set, length:', keyNodes.value.length);
+    
     buildNodeMeta(newKeyNodes);
 
     expandedKeys.value = expandedKeys.value.filter(key => folderKeys.value.includes(key));
@@ -608,6 +618,7 @@ watch(
 
     syncCheckAllSelect();
   },
+  { immediate: true }
 );
 </script>
 

@@ -1,6 +1,9 @@
 const cn = {
   message: {
     new_connection: '新建连接',
+    test_connection: '测试连接',
+    connection_success: '连接成功',
+    connection_failed: '连接失败',
     refresh_connection: '刷新',
     edit_connection: '编辑连接',
     duplicate_connection: '复制连接',

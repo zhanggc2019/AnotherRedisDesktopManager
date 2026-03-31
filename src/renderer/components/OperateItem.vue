@@ -2,7 +2,7 @@
   <!-- operate item -->
   <el-form
     class="connection-form"
-    size="mini"
+    size="small"
   >
     <el-form-item>
       <el-row :gutter="6">
@@ -113,7 +113,7 @@
     >
       <el-form
         label-position="top"
-        size="mini"
+        size="small"
       >
         <el-form-item :label="$t('message.key_name')">
           <el-input
@@ -204,11 +204,20 @@ watch(() => dbs.value, (newValue) => {
   dbsCopy.value = newValue.concat();
 });
 
-const getKeyList = () => (connectionWrapper && connectionWrapper.$refs
-  ? connectionWrapper.$refs.keyList
+watch(() => props.client, (newClient, oldClient) => {
+  console.log('[OperateItem] Client changed, old:', oldClient, 'new:', newClient);
+  if (newClient) {
+    console.log('[OperateItem] Calling initShow from watch');
+    initShow();
+  }
+}, { immediate: false });
+
+const getKeyList = () => (connectionWrapper && connectionWrapper.keyList
+  ? connectionWrapper.keyList.value
   : null);
 
 const initShow = () => {
+  console.log('[OperateItem] initShow called, client:', props.client);
   initDatabaseSelect();
   initCustomDbName();
 };
@@ -218,13 +227,34 @@ const setDb = (db) => {
 };
 
 const initDatabaseSelect = () => {
-  props.client.config('get', 'databases').then((reply) => {
-    dbs.value = [...Array(parseInt(reply[1])).keys()];
-    getDatabasesFromInfo();
-  }).catch(() => {
+  if (!props.client) {
+    // 如果client还没有初始化，设置默认的16个数据库
     dbs.value = [...Array(16).keys()];
+    dbsCopy.value = [...Array(16).keys()];
+    return;
+  }
+
+  // 首先设置默认的16个数据库
+  dbs.value = [...Array(16).keys()];
+  dbsCopy.value = [...Array(16).keys()];
+
+  // 尝试从Redis服务器获取实际的数据库数量
+  try {
+    props.client.config('get', 'databases').then((reply) => {
+      if (reply && reply[1]) {
+        const dbCount = parseInt(reply[1]) || 16;
+        dbs.value = [...Array(dbCount).keys()];
+        dbsCopy.value = [...Array(dbCount).keys()];
+      }
+      getDatabasesFromInfo();
+    }).catch(() => {
+      // 如果获取失败，使用默认的16个数据库
+      getDatabasesFromInfo(true);
+    });
+  } catch (e) {
+    // 如果出现错误，使用默认的16个数据库
     getDatabasesFromInfo(true);
-  });
+  }
 };
 
 const initCustomDbName = () => {
@@ -243,7 +273,16 @@ const getDatabasesFromInfo = (guessMaxDb = false) => {
 
   dbKeysCount.value = {};
   props.client.info().then((info) => {
-    const keyspace = info.split('# Keyspace')[1].trim().split('\n');
+    if (!info) {
+      return;
+    }
+
+    const keyspaceSection = info.split('# Keyspace');
+    if (keyspaceSection.length < 2) {
+      return;
+    }
+
+    const keyspace = keyspaceSection[1].trim().split('\n');
     let keyCount = [];
 
     for (const line of keyspace) {
@@ -475,74 +514,134 @@ defineExpose({
   initShow,
   setDb,
   resetStatus,
+  toggleCancelIcon,
+  searchIcon,
+  searchExact,
+  searchMatch,
 });
 </script>
 
 <style type="text/css">
-  .connection-menu .db-select {
-    width: 100%;
+  /* 强制表单填满宽度 */
+  .connection-menu-body .connection-form,
+  .connection-menu-body form.connection-form {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
+
+  /* 移除 el-form-item 默认边距 */
+  .connection-form .el-form-item,
+  .connection-form form > .el-form-item {
+    margin-bottom: 10px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* 强制 el-row 填满宽度 */
+  .connection-form .el-row,
+  .connection-form .el-form-item .el-row {
+    display: flex !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* 强制 el-col 填满宽度 */
+  .connection-form .el-col-12 {
+    flex: 0 0 50% !important;
+    max-width: 50% !important;
+    width: 50% !important;
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+    box-sizing: border-box !important;
+  }
+
+  .connection-form .el-col-12:first-child {
+    padding-left: 0 !important;
+  }
+
+  .connection-form .el-col-12:last-child {
+    padding-right: 0 !important;
+  }
+
+  /* DB 选择器填满宽度，高度统一 */
+  .connection-form .db-select,
+  .connection-form .el-select.db-select {
+    width: 100% !important;
+    display: block !important;
+  }
+
+  .connection-form .db-select .el-input__wrapper {
+    height: 32px !important;
+    box-sizing: border-box !important;
+  }
+
+  .connection-form .db-select .el-input__inner {
+    height: 32px !important;
+    line-height: 30px !important;
+  }
+
+  /* 新增 Key 按钮填满宽度，高度统一 */
+  .connection-form .new-key-btn,
+  .connection-form .el-button.new-key-btn {
+    width: 100% !important;
+    height: 32px !important;
+    line-height: 30px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 搜索行填满宽度 */
+  .connection-form .search-item {
+    margin-bottom: 12px !important;
+  }
+
+  .connection-form .search-input-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    width: 100% !important;
+  }
+
+  .connection-form .search-input,
+  .connection-form .el-autocomplete.search-input {
+    flex: 1 !important;
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  .connection-form .search-exact-checkbox {
+    flex-shrink: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .connection-form .search-action-btn {
+    flex-shrink: 0 !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 4px 6px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 下拉菜单样式 */
   .el-select-dropdown__item .db-select-key-count {
     color: #a9a9ab;
     font-size: 82%;
     vertical-align: top;
   }
+
   .el-select-dropdown__item .db-select-custom-name {
     float: right;
     margin-left: 4px;
   }
 
-  /*fix el-select height different from el-input*/
-  .connection-menu .db-select .el-input__inner, .connection-menu .new-key-btn {
-    /*margin-top: 0.5px;*/
-    height: 28px;
-  }
-  .connection-menu .new-key-btn {
-    width: 100%;
-  }
-  .connection-menu .search-item {
-    margin-top: -10px;
-    margin-bottom: 15px;
-  }
-  .connection-menu .search-input-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-  }
-  .connection-menu .search-input {
-    flex: 1;
-    width: auto;
-  }
-  .connection-menu .search-exact-checkbox {
-    flex: 0 0 auto;
-    margin-right: 0;
-  }
-  .connection-menu .search-action-btn {
-    flex: 0 0 auto;
-    min-height: 28px;
-    padding: 4px 6px;
-  }
-  .connection-menu .search-input .el-input__wrapper {
-    width: 100%;
-  }
-
-  .connection-menu .el-icon {
-    font-size: 12px;
-    margin: 0px;
-    width: auto;
-    /*color: grey;*/
-    vertical-align: baseline;
-  }
-
-  .connection-menu .connection-form {
-    /*padding-right: 8px;*/
-  }
-
-  .connection-menu .search-item .search-icon {
+  .search-icon {
     font-size: 128%;
     color: #a5a8ad;
     cursor: pointer;
-    width: 20px;
   }
 </style>

@@ -1,4 +1,5 @@
-import vue from '@/main.js';
+import bus from '@/bus';
+import { ElMessage } from 'element-plus';
 import electron from '@/electron';
 import commands from '@/commands.js';
 
@@ -33,7 +34,7 @@ Redis.prototype.sendCommand = function (...options) {
   const record = {
     time: new Date(), connectionName: this.options.connectionName, command, cost,
   };
-  vue.$bus.$emit('commandLog', record);
+  bus.$emit('commandLog', record);
 
   return response;
 };
@@ -346,8 +347,8 @@ export default {
     const maxRetryTimes = 3;
 
     if (times >= maxRetryTimes) {
-      vue.$message.error('Too Many Attempts To Reconnect. Please Check The Server Status!');
-      vue.$bus.$emit('closeConnection');
+      ElMessage.error('Too Many Attempts To Reconnect. Please Check The Server Status!');
+      bus.$emit('closeConnection');
       return false;
     }
 
@@ -368,8 +369,8 @@ export default {
       return content;
     } catch (e) {
       // force alert
-      alert(`${vue.$t('message.key_no_permission')}\n[${e.message}]`);
-      vue.$bus.$emit('closeConnection');
+      alert(`File permission error\n[${e.message}]`);
+      bus.$emit('closeConnection');
 
       return undefined;
     }

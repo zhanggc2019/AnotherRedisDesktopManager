@@ -198,6 +198,7 @@ li .list-index {
 .aside-drag-container {
   position: relative;
   user-select: none;
+  height: 100%;
   /*max-width: 50%;*/
 }
 .aside-connection {
@@ -208,7 +209,8 @@ li .list-index {
 }
 /*fix right container imdraggable*/
 .right-main-container {
-  width: 10%;
+  flex: 1;
+  width: auto;
 }
 .right-main-container .main-tabs-container {
   overflow-y: hidden;

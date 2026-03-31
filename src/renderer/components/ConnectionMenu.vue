@@ -106,7 +106,7 @@
     <!-- edit connection dialog -->
     <NewConnectionDialog
       ref="editConnectionDialog"
-      edit-mode="true"
+      :edit-mode="true"
       :config="config"
       @edit-connection-finished="editConnectionFinished"
     />

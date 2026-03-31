@@ -4,6 +4,16 @@
       <!-- new connection button -->
       <div class="aside-top-container">
         <el-button
+          class="aside-new-connection-btn"
+          type="info"
+          :icon="resolveElIcon('el-icon-circle-plus')"
+          :title="t('message.new_connection')+' Ctrl+n'"
+          @click="addNewConnection"
+        >
+          {{ t('message.new_connection') }}
+        </el-button>
+
+        <el-button
           class="aside-setting-btn"
           type="primary"
           :icon="resolveElIcon('el-icon-time')"
@@ -19,18 +29,6 @@
           plain
           @click="settingDialog?.show()"
         />
-
-        <div class="aside-new-connection-container">
-          <el-button
-            class="aside-new-connection-btn"
-            type="info"
-            :icon="resolveElIcon('el-icon-circle-plus')"
-            :title="t('message.new_connection')+' Ctrl+n'"
-            @click="addNewConnection"
-          >
-            {{ t('message.new_connection') }}
-          </el-button>
-        </div>
       </div>
 
       <!-- new connection dialog -->
@@ -121,27 +119,29 @@ onUnmounted(() => {
 </script>
 
 <style type="text/css">
+  .aside-outer-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
   .aside-top-container {
     display: flex;
     align-items: center;
+    padding: 0 8px 0 0;
     gap: 5px;
-    margin-right: 8px;
   }
-  .aside-top-container .aside-new-connection-container {
-    order: -1;
+
+  .aside-top-container .aside-new-connection-btn {
     flex: 1;
-    min-width: 0;
-    margin-right: 0;
-  }
-  .aside-new-connection-container .aside-new-connection-btn {
-    width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
   .aside-top-container .aside-setting-btn {
-    width: 44px;
-    margin-right: 0;
-    flex: 0 0 44px;
+    width: 36px;
+    padding: 8px;
+    flex-shrink: 0;
   }
 
   .dark-mode .aside-top-container .el-button--info {
